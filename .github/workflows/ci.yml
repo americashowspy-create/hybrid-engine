@@ -23,3 +23,14 @@ jobs:
         run: |
           python -m hybrid_engine --help
           python -m hybrid_engine inspect --target .
+          python -m hybrid_engine gh-audit --help
+          python -m hybrid_engine gh-propose --help
+
+      - name: Remote GitHub audit of this repository (main branch only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+        run: |
+          python -m hybrid_engine gh-audit --repo "$TARGET_REPOSITORY" --ref main --output /tmp/hybrid-self-audit.json > /dev/null
+          python -c "import json; d=json.load(open('/tmp/hybrid-self-audit.json')); assert d['mode']=='remote-read-only' and d['files_scanned'] > 0 and d['tests']['status']=='NOT_RUN'"

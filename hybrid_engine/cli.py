@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .audit import scan
+from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
 from .core import make_plan, route
 from .runner import run_tests
 from .store import hybrid_dir, initialize, read_state, write_json
@@ -43,7 +44,31 @@ def main(argv: list[str] | None = None) -> int:
         if command == "run":
             p.add_argument("--intent", required=True, help="Request in natural language; e.g. HYBRID AUDIT-FIX")
             p.add_argument("--tests", action="store_true", help="Explicitly run recognized project test scripts")
+    gh_audit = sub.add_parser("gh-audit", help="Read-only audit of an accessible GitHub repository")
+    gh_audit.add_argument("--repo", required=True, help="owner/name")
+    gh_audit.add_argument("--ref", help="Source branch or commit (default: default branch)")
+    gh_audit.add_argument("--output", type=Path, help="Optional JSON report path")
+
+    gh_pr = sub.add_parser("gh-propose", help="Validate a change-set; optionally create a draft PR")
+    gh_pr.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
+    gh_pr.add_argument("--apply", action="store_true", help="Write an isolated branch and draft PR")
+
     args = parser.parse_args(argv)
+
+    if args.command in ("gh-audit", "gh-propose"):
+        try:
+            client = GitHubClient()
+            if args.command == "gh-audit":
+                output = remote_audit(client, args.repo, args.ref)
+                if args.output:
+                    write_json(args.output.expanduser(), output)
+            else:
+                document = json.loads(args.manifest.read_text(encoding="utf-8"))
+                output = propose_changes(client, document, apply=args.apply)
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+            return 0
+        except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            parser.exit(2, f"hybrid: {exc}\n")
     try:
         root = args.target.expanduser().resolve(strict=True)
         if not root.is_dir():

@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: MVP / experimental.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.2 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -33,6 +33,20 @@ Do not merge, deploy, or change production data without approval.
 ```
 
 **Important:** A URL is documentation, not executable software or automatic permission. The assistant needs to read the instructions and use its connected GitHub and execution tools. In chat environments without a terminal, the agent can inspect, edit and create PRs if connected, but cannot honestly claim local tests have run. CI can provide verifiable results.
+
+## GitHub adapter (v0.2)
+
+New optional commands can inspect a GitHub repository remotely **without running its code**, or apply an explicitly reviewed multi-file change-set to a **new branch and draft PR**. No Codex or LLM API is needed. A scoped `GH_TOKEN` is required to access private repositories with this local CLI.
+
+```bash
+hybrid gh-audit --repo OWNER/REPO --ref main --output audit.json
+hybrid gh-propose --manifest reviewed-changeset.json             # preview, NO writes
+hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAFT PR
+```
+
+See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
+
+**This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
 
 ## Commands
 
