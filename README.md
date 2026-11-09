@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.7 experimental / agent-neutral executor, draft PR and evidence gates.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.8 experimental / ChatGPT source bundles, optional agent executor and evidence gates.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -33,6 +33,39 @@ Do not merge, deploy, or change production data without approval.
 ```
 
 **Important:** A URL is documentation, not executable software or automatic permission. The assistant needs to read the instructions and use its connected GitHub and execution tools. In chat environments without a terminal, the agent can inspect, edit and create PRs if connected, but cannot honestly claim local tests have run. CI can provide verifiable results.
+
+## ChatGPT-first one-command workflow (v0.8 experimental)
+
+Paste the target URL in ChatGPT together with:
+
+```text
+HYBRID AUTO
+Projeto: https://github.com/OWNER/REPOSITORY
+Audite, encontre um problema fundamentado, corrija em uma branch,
+teste com evidências disponíveis e entregue uma PR draft.
+Não faça merge ou deploy em produção.
+```
+
+An agent with connected GitHub tools can perform the inspected, SHA-bound
+source changes directly **without Codex**. This is a portable instruction
+protocol, not an executable ChatGPT plugin: external tools and their
+permissions must actually be available. No unrestricted automatic fixing is
+claimed. If GitHub Actions quota is exhausted, tests stay `CI_NOT_RUN`
+rather than falsely passing.
+
+The optional CLI now packages scoped source privately for another agent:
+
+```bash
+hybrid gh-chat-package --repo OWNER/REPO \
+  --goal "HYBRID DEBUG: repair the bug" --path src/example.py \
+  --output /tmp/hybrid-chat.json
+hybrid gh-execute --bundle /tmp/hybrid-chat.json \
+  --manifest /tmp/reviewed-changeset.json
+# Only when authorized: add --apply to open a draft PR, never merge.
+```
+
+[ChatGPT AUTO protocol](docs/CHATGPT_AUTO.md). Package output is 0600
+and contains private code; do not commit/share it with an unapproved provider.
 
 ## GitHub adapter (v0.2)
 
