@@ -3,6 +3,7 @@ import io
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from hybrid_engine.cli import main
@@ -26,6 +27,38 @@ class CliTests(unittest.TestCase):
             rc, state = self.call(["status", "--target", temp])
             self.assertEqual(rc, 0)
             self.assertEqual(state["flow"], "audit")
+
+
+    def test_gh_audit_cli_is_read_only(self):
+        payload = {"mode": "remote-read-only", "tests": {"status": "NOT_RUN"}}
+        with patch("hybrid_engine.cli.GitHubClient") as new_client, \
+                patch("hybrid_engine.cli.remote_audit", return_value=payload) as handler:
+            rc, result = self.call(["gh-audit", "--repo", "owner/repo", "--ref", "main"])
+            self.assertEqual(rc, 0)
+            self.assertEqual(result, payload)
+            handler.assert_called_once_with(new_client.return_value, "owner/repo", "main")
+
+    def test_gh_propose_dry_run_is_default(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "changes.json"
+            path.write_text('{"schema_version": 1, "repo": "owner/repo"}')
+            with patch("hybrid_engine.cli.GitHubClient"), \
+                    patch("hybrid_engine.cli.propose_changes", return_value={"status": "PREVIEW"}) as handler:
+                rc, result = self.call(["gh-propose", "--manifest", str(path)])
+                self.assertEqual(rc, 0)
+                self.assertEqual(result["status"], "PREVIEW")
+                self.assertIs(handler.call_args.kwargs["apply"], False)
+
+    def test_gh_propose_requires_explicit_apply(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "changes.json"
+            path.write_text('{"schema_version": 1, "repo": "owner/repo"}')
+            with patch("hybrid_engine.cli.GitHubClient"), \
+                    patch("hybrid_engine.cli.propose_changes", return_value={"status": "DRAFT_PR_CREATED"}) as handler:
+                rc, result = self.call(["gh-propose", "--manifest", str(path), "--apply"])
+                self.assertEqual(rc, 0)
+                self.assertEqual(result["status"], "DRAFT_PR_CREATED")
+                self.assertIs(handler.call_args.kwargs["apply"], True)
 
     def test_inspect_does_not_write_state(self):
         with tempfile.TemporaryDirectory() as temp:
