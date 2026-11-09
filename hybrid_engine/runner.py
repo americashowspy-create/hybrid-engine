@@ -18,7 +18,7 @@ def choose_test_command(root: Path) -> list[str] | None:
         except (ValueError, OSError, TypeError):
             return None
         if isinstance(scripts, dict) and isinstance(scripts.get("test"), str) and shutil.which("npm"):
-            return ["npm", "test", "--", "--run"]
+            return ["npm", "test"]
     return None
 
 
