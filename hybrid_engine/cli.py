@@ -16,6 +16,7 @@ from .store import hybrid_dir, initialize, read_state, write_json
 from .taskboard import list_tasks, note_task, start_task, task_status
 from .verification import verify_pr
 from .universal import run_universal
+from .evidence import save_report
 
 
 def markdown_report(report: dict, test: dict) -> str:
@@ -63,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
     gh_verify = sub.add_parser("gh-verify", help="Verify real PR-head CI evidence")
     gh_verify.add_argument("--repo", required=True, help="owner/name")
     gh_verify.add_argument("--pr", required=True, type=int, help="PR number")
+    gh_verify.add_argument("--require-check", action="append", default=[],
+                           help="Expected CI job or status context; repeat for required jobs")
+    gh_verify.add_argument("--output", type=Path, help="Write JSON evidence and adjacent Markdown report")
+    gh_verify.add_argument("--strict", action="store_true", help="Exit nonzero unless every required check passes")
 
     gh_task = sub.add_parser("gh-task", help="Durable task journal in GitHub Issues")
     gh_task.add_argument("action", choices=("start", "list", "status", "note"))
@@ -122,7 +127,10 @@ def main(argv: list[str] | None = None) -> int:
                 document = json.loads(args.manifest.read_text(encoding="utf-8"))
                 output = propose_changes(client, document, apply=args.apply)
             elif args.command == "gh-verify":
-                output = verify_pr(client, args.repo, args.pr)
+                output = (verify_pr(client, args.repo, args.pr, required_checks=args.require_check)
+                          if args.require_check else verify_pr(client, args.repo, args.pr))
+                if args.output:
+                    save_report(output, args.output.expanduser())
             elif args.command == "gh-auto":
                 output = (run_auto(client, args.repo, args.intent, ref=args.ref,
                                    apply=args.apply, scope_paths=args.scope_paths)
@@ -161,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = note_task(client, args.repo, args.issue, args.state,
                                    args.summary, pr_number=args.pr, apply=args.apply)
             print(json.dumps(output, ensure_ascii=False, indent=2))
+            if args.command == "gh-verify" and args.strict and output.get("ci") != "PASSED":
+                return 1
             return 0
         except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
             parser.exit(2, f"hybrid: {exc}\n")
