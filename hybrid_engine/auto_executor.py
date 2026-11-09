@@ -63,7 +63,7 @@ def _suggest_gitignore(existing: str) -> tuple[str, list[str]]:
 
 
 def run_auto(client: GitHubClient, repo: str, intent: str, *, ref: str | None = None,
-             apply: bool = False) -> dict:
+             apply: bool = False, scope_paths: list[str] | None = None) -> dict:
     """Audit arbitrary intents; apply only a narrowly allowlisted gitignore fix.
 
     Never runs downloaded code, generates arbitrary source edits, merges, deploys,
@@ -80,8 +80,13 @@ def run_auto(client: GitHubClient, repo: str, intent: str, *, ref: str | None = 
         if SHA.fullmatch(ref) and apply:
             raise ValueError("--apply requires a branch ref, not a detached commit.")
     plan = make_plan(intent, "github:" + repo)
-    audit = remote_audit(client, repo, ref)
-    limited = audit.get("truncated", False) or audit.get("files_unavailable", 0) > 0
+    if scope_paths is not None and ".gitignore" not in scope_paths:
+        raise ValueError("Guarded remediation requires .gitignore in the exact-file scope.")
+    audit = (remote_audit(client, repo, ref, scope_paths=scope_paths)
+             if scope_paths is not None else remote_audit(client, repo, ref))
+    limited = (audit.get("truncated", False)
+               or audit.get("files_unavailable", 0) > 0
+               or (scope_paths is not None and not audit.get("scope", {}).get("complete", False)))
     output = {
         "mode": mode,
         "repo": repo,
@@ -94,6 +99,7 @@ def run_auto(client: GitHubClient, repo: str, intent: str, *, ref: str | None = 
             "truncated": bool(limited),
             "limitations": audit["limitations"],
         },
+        "scope": audit.get("scope"),
         "test_evidence": "NOT_RUN",
         "writes_performed": False,
         "status": "AUDITED",

@@ -22,6 +22,7 @@ REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
 MAX_REMOTE_FILES = 250
+MAX_SCOPED_FILES = 20
 MAX_CHANGES = 20
 MAX_CHANGE_BYTES = 256 * 1024
 
@@ -123,9 +124,23 @@ def head_at(client: GitHubClient, repo: str, ref: str | None) -> tuple[str, str]
     return ref, sha
 
 
-def remote_audit(client: GitHubClient, repo: str, ref: str | None = None) -> dict:
-    """Download a bounded, read-only source snapshot into a temporary directory."""
+def remote_audit(client: GitHubClient, repo: str, ref: str | None = None,
+                 *, scope_paths: list[str] | None = None) -> dict:
+    """Read-only source audit; optional exact-file scope for large repositories.
+
+    A scoped audit only claims coverage of the selected files, never the repo.
+    Missing, oversized, unreadable or symlinked requested files are rejected.
+    """
     base = _repo_path(repo)
+    scoped = scope_paths is not None
+    if scoped:
+        if not isinstance(scope_paths, list) or not 1 <= len(scope_paths) <= MAX_SCOPED_FILES:
+            raise ValueError("Scope must contain 1-20 exact repository file paths.")
+        requested = [safe_repo_path(path) for path in scope_paths]
+        if len(requested) != len(set(requested)):
+            raise ValueError("Duplicate scope path.")
+    else:
+        requested = []
     ref_name, sha = head_at(client, repo, ref)
     commit = client.request("GET", base + "/git/commits/" + sha)
     tree_sha = commit["tree"]["sha"]
@@ -133,28 +148,45 @@ def remote_audit(client: GitHubClient, repo: str, ref: str | None = None) -> dic
         raise GitHubError("GitHub returned an invalid tree SHA")
     tree = client.request("GET", base + "/git/trees/" + tree_sha + "?recursive=1")
     if tree.get("truncated"):
-        raise GitHubError("GitHub truncated the repository tree; full audit unavailable.")
-    candidates = []
-    for item in tree.get("tree", []):
-        if item.get("type") != "blob" or item.get("mode") == "120000":
-            continue
-        try:
-            path = safe_repo_path(item["path"])
-        except (KeyError, ValueError):
-            continue
-        name = PurePosixPath(path)
-        if any(part in SKIP_DIRS for part in name.parts[:-1]):
-            continue
-        if name.suffix.lower() not in SCANNABLE and name.name not in EXTRA_NAMES:
-            continue
-        if item.get("size", 0) > MAX_BYTES:
-            continue
-        if not SHA.fullmatch(str(item.get("sha", ""))):
-            continue
-        candidates.append((path, item["sha"]))
+        raise GitHubError("GitHub truncated the repository tree; audit unavailable.")
+    entries = tree.get("tree", [])
+    if not isinstance(entries, list):
+        raise GitHubError("GitHub returned malformed tree data.")
 
-    limited = len(candidates) > MAX_REMOTE_FILES
-    selected = candidates[:MAX_REMOTE_FILES]
+    candidates = []
+    if scoped:
+        lookup = {item.get("path"): item for item in entries if isinstance(item, dict)}
+        for path in requested:
+            item = lookup.get(path)
+            if not isinstance(item, dict) or item.get("type") != "blob" or item.get("mode") not in ("100644", "100755"):
+                raise GitHubError("Requested scope file is missing, unsafe or not regular: " + path)
+            size = item.get("size")
+            if not isinstance(size, int) or size > MAX_BYTES or size < 0:
+                raise GitHubError("Requested scope file is too large or has unknown size: " + path)
+            blob_sha = item.get("sha")
+            if not isinstance(blob_sha, str) or not SHA.fullmatch(blob_sha):
+                raise GitHubError("GitHub returned invalid blob SHA for: " + path)
+            candidates.append((path, blob_sha))
+    else:
+        for item in entries:
+            if not isinstance(item, dict) or item.get("type") != "blob" or item.get("mode") == "120000":
+                continue
+            try:
+                path = safe_repo_path(item["path"])
+            except (KeyError, ValueError):
+                continue
+            name = PurePosixPath(path)
+            if any(part in SKIP_DIRS for part in name.parts[:-1]):
+                continue
+            if name.suffix.lower() not in SCANNABLE and name.name not in EXTRA_NAMES:
+                continue
+            if item.get("size", 0) > MAX_BYTES:
+                continue
+            if not SHA.fullmatch(str(item.get("sha", ""))):
+                continue
+            candidates.append((path, item["sha"]))
+    limited = not scoped and len(candidates) > MAX_REMOTE_FILES
+    selected = candidates if scoped else candidates[:MAX_REMOTE_FILES]
     unavailable = 0
     with tempfile.TemporaryDirectory(prefix="hybrid-remote-") as tmp:
         root = Path(tmp)
@@ -165,7 +197,7 @@ def remote_audit(client: GitHubClient, repo: str, ref: str | None = None) -> dic
                 continue
             try:
                 content = base64.b64decode(blob["content"], validate=False)
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 unavailable += 1
                 continue
             if len(content) > MAX_BYTES or b"\x00" in content:
@@ -174,7 +206,7 @@ def remote_audit(client: GitHubClient, repo: str, ref: str | None = None) -> dic
             dest = root / path
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(content)
-        output = scan(root)
+        output = scan(root, include_paths=set(requested)) if scoped else scan(root)
     output["target"] = "github:" + repo + "@" + ref_name
     output["source_sha"] = sha
     output["mode"] = "remote-read-only"
@@ -184,6 +216,19 @@ def remote_audit(client: GitHubClient, repo: str, ref: str | None = None) -> dic
     if limited or unavailable:
         output["limitations"].append(
             "Remote audit incomplete: file cap or unreadable files; do not interpret missing findings as safe."
+        )
+    if scoped:
+        complete = bool(not output["truncated"] and unavailable == 0
+                        and output["files_skipped"] == 0
+                        and output["files_scanned"] == len(requested))
+        output["scope"] = {
+            "mode": "exact_files",
+            "paths": requested,
+            "complete": complete,
+            "notice": "Only these exact files were scanned; rest of repository NOT_AUDITED.",
+        }
+        output["limitations"].append(
+            "Scoped audit is not a full-repository security audit; unrelated files are not tested."
         )
     output["tests"] = {"status": "NOT_RUN", "reason": "Remote source inspection never executes code."}
     return output

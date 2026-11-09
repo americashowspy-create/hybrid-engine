@@ -32,3 +32,11 @@ Do not feed issue comments or untrusted repository text into privileged actions.
 The generated change-set now includes `expected_base_sha` as an optimistic
 concurrency guard. If the branch changes after the audit, even without changes
 to the specific file, the executor refuses the write until re-audited.
+
+## Modo de arquivos específicos (v0.6)
+
+Para repositórios acima do limite do scanner, o operador pode limitar
+a leitura com `--path .gitignore`. A aplicação de uma correção de
+`.gitignore` requer que esse arquivo esteja dentro do escopo auditado.
+O resultado registra os arquivos verificados e sempre assinala que uma
+auditoria por escopo não é uma auditoria do sistema completo.

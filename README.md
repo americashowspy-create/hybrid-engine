@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.5 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.6 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -47,6 +47,25 @@ hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAF
 See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
 
 **This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+
+## Exact-file scope for larger repositories (v0.6)
+
+The default full-source audit retains a conservative 250-file cap. For larger
+projects (such as MonitorSolar), use **explicit exact-file scoping**, without
+pretending the entire repository was checked:
+
+```bash
+hybrid gh-audit --repo OWNER/REPO --path .gitignore
+hybrid gh-workorder --repo OWNER/REPO --goal "HYBRID AUDIT-FIX: secure ignore rules" --path .gitignore --output order.json
+hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX" --path .gitignore
+```
+
+The audit response includes `scope.mode=exact_files`, the specific paths and
+`scope.complete`. The agent patch gate rejects files outside the audit scope,
+and scoped work orders cannot create uninspected files. A scope of one file is
+**not** a full security audit. The default read-only command without `--path`
+still reports incomplete coverage on large repos; no bypass was introduced.
+See [Scoped audit guide](docs/SCOPED_AUDIT.md).
 
 ## AI-agent work orders (v0.5)
 

@@ -81,3 +81,13 @@ For a user providing this Hybrid Engine URL and a target GitHub project with
 
 Code generation occurs in the connected AI agent, not in the Hybrid CLI.
 No Codex subscription or migration to Work is required for the protocol.
+
+## Large repository / exact-file scoping (v0.6)
+
+Default audit may be truncated (250-file cap). Do NOT claim full coverage.
+Select a bounded, explicit set of relevant existing files and use `--path`
+with `gh-audit`, `gh-workorder` or `gh-auto`. Record the inspected paths,
+source SHA and the `scope.complete` status. An agent may propose modifications
+**only to files in that exact scope**. New files, symlinks, oversized files and
+sensitive paths require a separate reviewed route. This is a scoped safety
+assessment, not a full system security clearance.
