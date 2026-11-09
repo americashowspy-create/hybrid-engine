@@ -17,6 +17,7 @@ from .taskboard import list_tasks, note_task, start_task, task_status
 from .verification import verify_pr
 from .universal import run_universal
 from .evidence import save_report
+from .chat_package import export_chat_package
 
 
 def markdown_report(report: dict, test: dict) -> str:
@@ -113,9 +114,18 @@ def main(argv: list[str] | None = None) -> int:
     gh_agent.add_argument("--timeout", type=int, default=180)
     gh_agent.add_argument("--apply", action="store_true", help="Opt-in isolated branch and draft PR")
 
+    gh_chat = sub.add_parser("gh-chat-package", help="Write scoped SHA-pinned code bundle for a connected chat agent")
+    gh_chat.add_argument("--repo", required=True, help="owner/name")
+    gh_chat.add_argument("--goal", required=True, help="HYBRID DEBUG / AUDIT-FIX / BUILD goal")
+    gh_chat.add_argument("--ref", help="Target branch (default: default branch)")
+    gh_chat.add_argument("--path", action="append", dest="scope_paths", required=True,
+                         help="Audited exact file path (repeat, max 20)")
+    gh_chat.add_argument("--output", required=True, type=Path,
+                         help="New private local JSON filename; no source code printed")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent", "gh-chat-package"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -142,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
                           if args.scope_paths else prepare(client, args.repo, args.goal, ref=args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
+            elif args.command == "gh-chat-package":
+                output = export_chat_package(
+                    client, args.repo, args.goal, args.scope_paths, args.output,
+                    ref=args.ref,
+                )
             elif args.command == "gh-agent":
                 output = run_universal(
                     client, args.repo, args.goal, args.scope_paths,
