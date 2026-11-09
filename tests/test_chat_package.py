@@ -1,5 +1,6 @@
 """Portable chat bundle must remain scoped, private and entirely read-only."""
 import json
+import hashlib
 import stat
 import tempfile
 import unittest
@@ -10,15 +11,20 @@ from hybrid_engine.chat_package import build_chat_package, export_chat_package, 
 
 SHA = "a" * 40
 ORDER = {
+    "schema_version": 1, "kind": "hybrid.agent-work-order",
+    "flow": "debug", "audit": {"complete": True},
     "repo": "acme/demo", "base": "main", "base_sha": SHA,
     "ready_for_proposal": True,
     "scope": {"mode": "exact_files", "paths": ["src/demo.py"], "complete": True},
 }
+CODE = "SECRET_CODE_CONTENT = 'private'\\n"
+BYTES = CODE.encode("utf-8")
+BLOB = hashlib.sha1(b"blob " + str(len(BYTES)).encode() + b"\\x00" + BYTES).hexdigest()
 BUNDLE = {
     "schema_version": 1, "protocol": "hybrid.agent-stdio.v1",
     "work_order": ORDER,
-    "sources": [{"path": "src/demo.py", "expected_sha": "b" * 40,
-                 "content": "SECRET_CODE_CONTENT = 'private'\n"}],
+    "sources": [{"path": "src/demo.py", "expected_sha": BLOB,
+                 "content": CODE}],
 }
 
 
@@ -29,6 +35,16 @@ class ChatPackageTests(unittest.TestCase):
             work_order_from_bundle({**BUNDLE, "protocol": "unknown"})
         with self.assertRaises(ValueError):
             work_order_from_bundle({**BUNDLE, "sources": [{"path": "other.py"}]})
+
+    def test_rejects_forged_source_and_order(self):
+        with self.assertRaisesRegex(ValueError, "audited Git blob SHA"):
+            work_order_from_bundle({**BUNDLE, "sources": [{**BUNDLE["sources"][0], "content": "changed"}]})
+        with self.assertRaises(ValueError):
+            work_order_from_bundle({**BUNDLE, "work_order": {**ORDER, "audit": {"complete": False}}})
+        with self.assertRaises(ValueError):
+            work_order_from_bundle({**BUNDLE, "work_order": {**ORDER, "kind": "forged"}})
+        with self.assertRaises(ValueError):
+            work_order_from_bundle({**BUNDLE, "sources": [{**BUNDLE["sources"][0], "expected_sha": "x" * 40}]})
 
     def test_requires_exact_file_paths(self):
         with self.assertRaises(ValueError):
