@@ -85,5 +85,23 @@ class PullVerificationTests(unittest.TestCase):
             verify_pr(FakeGitHub(), "acme/demo", 0)
 
 
+    def test_policy_rejects_partial_green(self):
+        result = verify_pr(FakeGitHub(checks=[check()]), "acme/demo", 12,
+                           required_checks=["test", "security"])
+        self.assertEqual(result["ci"], "MISSING_REQUIRED")
+        self.assertEqual(result["missing_required_checks"], ["security"])
+
+    def test_policy_accepts_only_complete_named_checks(self):
+        result = verify_pr(FakeGitHub(checks=[check()],
+                                      contexts=[{"context": "security", "state": "success"}]),
+                           "acme/demo", 12, required_checks=["test", "security"])
+        self.assertEqual(result["ci"], "PASSED")
+        self.assertEqual(result["missing_required_checks"], [])
+
+    def test_policy_rejects_invalid_names(self):
+        with self.assertRaises(ValueError):
+            verify_pr(FakeGitHub(), "acme/demo", 12, required_checks=["test", "test"])
+
+
 if __name__ == "__main__":
     unittest.main()
