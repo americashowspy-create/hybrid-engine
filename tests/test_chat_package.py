@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from hybrid_engine.chat_package import build_chat_package, export_chat_package
+from hybrid_engine.chat_package import build_chat_package, export_chat_package, work_order_from_bundle
 
 SHA = "a" * 40
 ORDER = {
@@ -23,6 +23,13 @@ BUNDLE = {
 
 
 class ChatPackageTests(unittest.TestCase):
+    def test_bundle_recovers_exact_work_order(self):
+        self.assertEqual(work_order_from_bundle(BUNDLE), ORDER)
+        with self.assertRaises(ValueError):
+            work_order_from_bundle({**BUNDLE, "protocol": "unknown"})
+        with self.assertRaises(ValueError):
+            work_order_from_bundle({**BUNDLE, "sources": [{"path": "other.py"}]})
+
     def test_requires_exact_file_paths(self):
         with self.assertRaises(ValueError):
             build_chat_package(object(), "acme/demo", "HYBRID DEBUG", [])
