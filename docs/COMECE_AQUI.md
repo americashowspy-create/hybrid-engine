@@ -8,20 +8,20 @@ Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar ent
 
 Você precisa de:
 
-- Uma conta ChatGPT ou outro agente capaz de acessar repositórios, com ferramentas autorizadas para leitura e, **se desejar criar PR**, escrita.
+- Um agente de IA, interface de chat, IDE ou terminal com acesso autorizado a repositórios; para criar PR, é necessária **permissão real de escrita**, não somente leitura.
 - Acesso ao repositório **Hybrid Engine**. Se ele estiver privado, o responsável precisa convidar você; somente conhecer a URL não permite a leitura.
 - Acesso ao **seu projeto de teste**, de preferência com baixo risco e sem dependências de produção.
 - Permissão para fazer alterações no repositório alvo. Nunca use um repositório de outra pessoa sem autorização.
 
-**Não precisa:** pagar GitHub Pro, instalar Codex, migrar para outro agente, copiar o código do framework para seu projeto, habilitar GitHub Actions ou fornecer tokens diretamente na conversa quando já existir uma conexão GitHub adequada.
+**Não precisa:** escolher um provedor específico, contratar GitHub Pro, copiar o framework para o projeto alvo ou habilitar GitHub Actions. Autentique-se com segurança no ambiente escolhido; nunca cole tokens em conversas.
 
 > Se o agente não tiver acesso à leitura/escrita do GitHub, ele deve informar isso. Não interprete uma resposta inventada como execução verdadeira.
 
-## 2. Primeiro teste em um chat novo
+## 2. Primeiro teste em qualquer agente
 
-1. Abra uma conversa **nova**, para verificar se o protocolo funciona sem histórico anterior.
-2. Conecte o GitHub nas configurações de Plugins/Apps, se necessário e disponível. Confira as permissões concedidas.
-3. Copie este exemplo, substituindo a URL do projeto alvo.
+1. Escolha o ambiente: **chat com ferramentas**, **agente de programação/IDE** ou **terminal**. Em chats, comece uma conversa nova; em ferramentas de código, abra o projeto.
+2. Configure o acesso ao repositório e confira permissões de leitura, escrita e execução. Algumas integrações são somente leitura.
+3. Peça explicitamente a leitura de `AGENTS.md` e do protocolo universal; cole o exemplo abaixo, substituindo a URL do projeto alvo.
 
 ```text
 HYBRID AUTO — TESTE REAL v0.8
@@ -32,8 +32,8 @@ https://github.com/americashowspy-create/hybrid-engine
 Projeto:
 https://github.com/OWNER/REPOSITORY
 
-Leia o AGENTS.md da main e docs/CHATGPT_AUTO.md.
-Atue como agente principal; outros agentes são opcionais.
+Leia AGENTS.md e docs/AGENT_AUTO.md da main.
+Use as ferramentas e permissões realmente disponíveis neste ambiente.
 
 1. Inspecione a branch principal e as PRs existentes.
 2. Identifique UM problema comprovado, pequeno e de baixo risco.
@@ -62,7 +62,7 @@ Se faltar acesso, autorização ou ambiente, explique o bloqueio real.
 | Limites | Riscos, pendências e rollback |
 | Segurança | Confirmação de que não houve merge ou deploy |
 
-Se o agente apenas der um parecer sem conexão GitHub, considere **auditoria/planejamento**, não execução. Se oferecer um link de PR que não abre no seu GitHub, o teste falhou.
+Se o agente apenas der um parecer sem acesso de escrita comprovado, considere **auditoria/planejamento**, não execução. Se oferecer um link de PR que não abre no seu GitHub, o teste falhou.
 
 ## 4. Escolha um modo de teste
 
@@ -103,7 +103,7 @@ hybrid run --target /caminho/do/projeto --intent "auditoria"
 
 A CLI cria planos e relatórios, mas **não gera patches de IA por si só**. Para a auditoria remota, configure um `GH_TOKEN` de escopo mínimo **somente no seu ambiente local** e consulte [o guia GitHub](GITHUB_ADAPTER.md). Não envie tokens por mensagem.
 
-Para passar fontes auditadas a um agente local, use `hybrid gh-chat-package` e `hybrid gh-execute --bundle`, descritos no [README](../README.md) e no [protocolo v0.8](CHATGPT_AUTO.md).
+Para passar fontes auditadas a um agente local, use `hybrid gh-chat-package` e `hybrid gh-execute --bundle`, descritos no [README](../README.md) e no [protocolo universal v0.8](AGENT_AUTO.md).
 
 ## 6. E se meus minutos do GitHub Actions acabaram?
 

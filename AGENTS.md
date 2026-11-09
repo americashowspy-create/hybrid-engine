@@ -25,14 +25,14 @@ If a user provides this repository URL and says `HYBRID AUTO`, `AUDIT`, `AUDIT-F
 
 No agent implementation is mandatory. Codex is **optional**, not the backend.
 
-## HYBRID AUTO — ChatGPT-first workflow (v0.8)
+## HYBRID AUTO — provider-neutral workflow (v0.8)
 
-For a one-turn `HYBRID AUTO` request with a target GitHub URL, follow
-[docs/CHATGPT_AUTO.md](docs/CHATGPT_AUTO.md) with the actually connected tools.
-**No Codex, CLI install, Work mode or proprietary model API is mandatory.**
+For a `HYBRID AUTO` request with a target GitHub URL, follow
+[docs/AGENT_AUTO.md](docs/AGENT_AUTO.md) using the tools actually available.
+**No specific model, interface, IDE or paid provider is required by the protocol.**
 A message is a request, not automatic access to repositories or production.
 
-The ChatGPT agent is the code author when GitHub actions are available; it
+The active authorized agent is the code author when GitHub actions are available; it
 must investigate real source, capture commit/blob SHAs, keep a bounded audited
 scope, open a branch/draft PR only when authorized and report actual local/CI
 evidence. If no runtime or GitHub minutes exist, deliver the PR with
@@ -60,7 +60,7 @@ Portable CLI optional commands:
 - `hybrid gh-audit --repo OWNER/REPO [--ref main]`: remote read-only audit; records limitations and NEVER executes downloaded source.
 - `hybrid gh-propose --manifest reviewed.json`: verifies each file SHA, PREVIEW only.
 - `hybrid gh-propose --manifest reviewed.json --apply`: only when the user authorizes this write, create an atomic commit on a new isolated branch and open a DRAFT pull request. No merging or deploy.
-- Use `docs/GITHUB_ADAPTER.md` for syntax and token scopes. ChatGPT may use its connected GitHub actions directly instead; this local CLI is optional.
+- Use `docs/GITHUB_ADAPTER.md` for syntax and token scopes. Any authorized agent may use its connected GitHub actions directly instead; this local CLI is optional.
 
 On all paths: do not present preview as applied, and do not present a draft PR as tested or merged.
 
@@ -101,7 +101,7 @@ For a user providing this Hybrid Engine URL and a target GitHub project with
 6. Write task continuity into the target GitHub Issues only when appropriate.
 
 Code generation occurs in the connected AI agent, not in the Hybrid CLI.
-No Codex subscription or migration to Work is required for the protocol.
+No platform-specific subscription or migration to another interface is required by the protocol.
 
 ## Large repository / exact-file scoping (v0.6)
 

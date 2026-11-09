@@ -1,8 +1,8 @@
 # Exemplos de comandos — copiar e usar
 
-**Pré-requisito:** o agente deve conseguir ler o [AGENTS.md](../AGENTS.md) e o repositório alvo. Estes são **prompts de trabalho**, não comandos internos garantidos da interface ChatGPT.
+**Pré-requisito:** o agente deve conseguir ler o [AGENTS.md](../AGENTS.md) e o repositório alvo. Estes são **prompts portáteis**, não comandos internos garantidos por um modelo, IDE ou fornecedor.
 
-Substitua `OWNER/REPOSITORY` em todos os exemplos.
+Substitua `OWNER/REPOSITORY` em todos os exemplos. Antes de executar, confirme acesso ao código, permissão de escrita, ferramentas de teste e autorização para PR Draft.
 
 ## HYBRID AUTO — do diagnóstico à PR Draft
 
@@ -11,7 +11,7 @@ HYBRID AUTO
 Framework: https://github.com/americashowspy-create/hybrid-engine
 Projeto: https://github.com/OWNER/REPOSITORY
 
-Leia AGENTS.md e docs/CHATGPT_AUTO.md.
+Leia AGENTS.md e docs/AGENT_AUTO.md.
 Localize o problema real mais relevante de baixo risco.
 Verifique PRs existentes antes de modificar.
 Investigue, planeje, implemente em branch isolada e abra PR Draft,

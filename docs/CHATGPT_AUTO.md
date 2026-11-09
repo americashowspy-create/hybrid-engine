@@ -1,4 +1,6 @@
-# HYBRID AUTO in ChatGPT — operator protocol (v0.8 experimental)
+# HYBRID AUTO — chat-oriented companion guide (v0.8)
+
+**Canonical, vendor-neutral protocol:** [AGENT_AUTO.md](AGENT_AUTO.md). This specialized guide remains available for existing integrations.
 
 This is a **portable workflow**, not a native ChatGPT command, a proprietary
 agent integration or a promise of autonomous code execution. ChatGPT or another
