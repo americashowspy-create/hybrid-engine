@@ -31,10 +31,10 @@ def route(intent: str) -> str:
         return explicit.group(1)
     if re.search(r"\b(status|progresso|pendencias|retomar)\b", s):
         return "status"
-    if (re.search(r"\b(audit|auditar|auditoria|scan|seguranca|security)\b", s)
+    if (re.search(r"\b(audit|audite|auditar|auditoria|scan|seguranca|security)\b", s)
             and re.search(r"\b(corrig|fix|repar|consert|resolver)\w*", s)):
         return "audit-fix"
-    if re.search(r"\b(audit|auditar|auditoria|scan|seguranca|security)\b", s):
+    if re.search(r"\b(audit|audite|auditar|auditoria|scan|seguranca|security)\b", s):
         return "audit"
     if re.search(r"\b(debug|bug|erro|falha|quebr|corrig|consert|repar)\w*", s):
         return "debug"
