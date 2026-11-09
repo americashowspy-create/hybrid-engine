@@ -196,6 +196,11 @@ def validate_changeset(data: dict) -> dict:
     base = validate_ref(data.get("base", "main"))
     if SHA.fullmatch(base):
         raise ValueError("The PR base must be a branch, not a commit SHA")
+    expected_base_sha = data.get("expected_base_sha")
+    if expected_base_sha is not None and (
+        not isinstance(expected_base_sha, str) or not SHA.fullmatch(expected_base_sha)
+    ):
+        raise ValueError("expected_base_sha must be a 40-character commit SHA")
     title = data.get("title")
     if not isinstance(title, str) or not 5 <= len(title) <= 160:
         raise ValueError("PR title must be 5-160 characters")
@@ -223,7 +228,8 @@ def validate_changeset(data: dict) -> dict:
         if not isinstance(content, str) or len(content.encode("utf-8")) > MAX_CHANGE_BYTES:
             raise ValueError("Each file must contain UTF-8 text <= 256KiB")
         normalized.append({"path": path, "expected_sha": expected, "content": content})
-    return {"repo": repo, "base": base, "title": title, "body": body, "changes": normalized}
+    return {"repo": repo, "base": base, "expected_base_sha": expected_base_sha,
+            "title": title, "body": body, "changes": normalized}
 
 
 def propose_changes(client: GitHubClient, document: dict, *, apply: bool = False) -> dict:
@@ -232,6 +238,9 @@ def propose_changes(client: GitHubClient, document: dict, *, apply: bool = False
     repo, base_ref = change_set["repo"], change_set["base"]
     prefix = _repo_path(repo)
     _, base_sha = head_at(client, repo, base_ref)
+    pinned = change_set.get("expected_base_sha")
+    if pinned is not None and base_sha != pinned:
+        raise GitHubError("Base branch changed after review; re-audit and retry.")
     for item in change_set["changes"]:
         path = quote(item["path"], safe="/")
         current = client.request(
