@@ -87,18 +87,18 @@ class UniversalAgentTests(unittest.TestCase):
             invoke_agent([sys.executable, "-c", "raise SystemExit(2)"], {})
 
     def test_preview_is_default_and_never_applies(self):
-        with patch("hybrid_engine.universal.prepare", return_value=order()), \\
-             patch("hybrid_engine.universal.source_package", return_value={}), \\
-             patch("hybrid_engine.universal.invoke_agent", return_value={"schema_version": 1}), \\
+        with patch("hybrid_engine.universal.prepare", return_value=order()), \
+             patch("hybrid_engine.universal.source_package", return_value={}), \
+             patch("hybrid_engine.universal.invoke_agent", return_value={"schema_version": 1}), \
              patch("hybrid_engine.universal.submit", return_value={"status": "PREVIEW"}) as submit:
             result = run_universal(object(), "acme/demo", "HYBRID DEBUG", ["src/example.py"], ["agent"])
         self.assertEqual(result["verification"], "NOT_RUN_PREVIEW")
         self.assertFalse(submit.call_args.kwargs["apply"])
 
     def test_apply_only_proposes_draft_pr(self):
-        with patch("hybrid_engine.universal.prepare", return_value=order()), \\
-             patch("hybrid_engine.universal.source_package", return_value={}), \\
-             patch("hybrid_engine.universal.invoke_agent", return_value={"schema_version": 1}), \\
+        with patch("hybrid_engine.universal.prepare", return_value=order()), \
+             patch("hybrid_engine.universal.source_package", return_value={}), \
+             patch("hybrid_engine.universal.invoke_agent", return_value={"schema_version": 1}), \
              patch("hybrid_engine.universal.submit",
                    return_value={"status": "DRAFT_PR_CREATED", "pr_number": 27}) as submit:
             result = run_universal(object(), "acme/demo", "HYBRID DEBUG",
