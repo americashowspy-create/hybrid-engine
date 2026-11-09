@@ -1,4 +1,4 @@
-# Architecture — v0.1.0
+# Architecture — v0.2.0
 
 ## Layer model
 
@@ -7,7 +7,8 @@
 3. **Security Engine**: `hybrid_engine.audit` performs low-impact repository checks, recognizes likely secrets, flags dynamic-code hazards, and reports stack evidence.
 4. **Runner**: `hybrid_engine.runner` executes only recognized local test commands after explicit opt-in and collects real subprocess status.
 5. **Continuity**: `hybrid_engine.store` writes JSON plans, security reports, and state in `.hybrid/`. These are local files; decide whether to commit selected artifacts.
-6. **GitHub / CI**: pull requests for code changes, workflow checks as independent evidence.
+6. **GitHub adapter**: optional authenticated read-only remote inventory, SHA-checked reviewed change-set, single atomic commit, isolated branch, draft PR; GitHub connector can independently perform the equivalent chat steps.
+7. **GitHub / CI**: pull requests for code changes, workflow checks as independent evidence.
 
 The Core does **not** automatically load and execute external prompt instructions. External frameworks remain optional and independently versioned.
 
