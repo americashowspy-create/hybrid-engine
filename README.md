@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.2 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.3 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -47,6 +47,31 @@ hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAF
 See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
 
 **This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+
+## GitHub task journal and CI verification (v0.3)
+
+Works with GitHub Issues as a persistent task history across ChatGPT conversations.
+No Codex or external agent API is required. All state-changing operations
+default to **PREVIEW** and require `--apply` explicitly.
+
+```bash
+hybrid gh-task start --repo OWNER/REPO --goal "Audite o sistema"     # preview
+hybrid gh-task start --repo OWNER/REPO --goal "Audite o sistema" --apply
+hybrid gh-task list --repo OWNER/REPO
+hybrid gh-task status --repo OWNER/REPO --issue 15
+hybrid gh-task note --repo OWNER/REPO --issue 15 --state blocked --summary "Missing test credentials"
+hybrid gh-task note --repo OWNER/REPO --issue 15 --state review_ready --summary "PR ready" --pr 16 --apply
+hybrid gh-verify --repo OWNER/REPO --pr 16
+```
+
+Requires a GitHub token with Issues permissions for writes; use least privilege.
+**Public repository issues are public**: do not put private security findings,
+secrets or sensitive business data into task goals or summaries.
+
+`gh-verify` consults the live PR-head SHA and its reported GitHub checks.
+`PASSED` means the observed checks passed, **not** that all tests exist or
+the application is safe. Neither command merges or deploys. See
+[task journal guide](docs/TASK_JOURNAL.md).
 
 ## Commands
 
