@@ -73,7 +73,8 @@ def work_order_from_bundle(bundle: dict) -> dict:
         raise ValueError("Malformed chat package")
     scope = order.get("scope")
     paths = scope.get("paths") if isinstance(scope, dict) else None
-    if (not isinstance(paths, list) or len(paths) != len(sources)
+    if (not isinstance(paths, list) or not all(isinstance(path, str) for path in paths)
+            or len(set(paths)) != len(paths) or len(paths) != len(sources)
             or not all(isinstance(item, dict) and isinstance(item.get("path"), str)
                        for item in sources)
             or set(paths) != {item["path"] for item in sources}):
