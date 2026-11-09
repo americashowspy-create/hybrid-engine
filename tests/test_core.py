@@ -5,7 +5,7 @@ from pathlib import Path
 from hybrid_engine.core import make_plan, route
 from hybrid_engine.audit import scan
 from hybrid_engine.store import initialize, read_state
-from hybrid_engine.runner import choose_test_command
+from hybrid_engine.runner import choose_test_command, run_tests
 
 
 class RouterTests(unittest.TestCase):
@@ -54,6 +54,19 @@ class StateTests(unittest.TestCase):
             initialize(root)
             initialize(root)
             self.assertEqual(read_state(root)["status"], "initialized")
+
+    def test_test_output_is_not_saved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "pyproject.toml").write_text("[project]\\nname=\\\"demo\\\"\\n")
+            (root / "tests").mkdir()
+            (root / "tests" / "test_example.py").write_text(
+                "import unittest\\nclass TestExample(unittest.TestCase):\\n"
+                "    def test_case(self):\\n        print(\\\"secret must never appear in report\\\")\\n"
+            )
+            data = run_tests(root)
+            self.assertEqual(data["status"], "PASS")
+            self.assertNotIn("secret must never appear in report", str(data))
 
     def test_no_implicit_test_execution(self):
         with tempfile.TemporaryDirectory() as temp:
