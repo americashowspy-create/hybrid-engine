@@ -28,3 +28,7 @@ When the rules are already present, the executor creates no PR.
 For other fixes, an agent must investigate, prepare minimal changes and
 use the existing SHA-checked `gh-propose` flow or its connected GitHub tools.
 Do not feed issue comments or untrusted repository text into privileged actions.
+
+The generated change-set now includes `expected_base_sha` as an optimistic
+concurrency guard. If the branch changes after the audit, even without changes
+to the specific file, the executor refuses the write until re-audited.

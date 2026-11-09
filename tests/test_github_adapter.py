@@ -153,6 +153,27 @@ class ProposalTests(unittest.TestCase):
             propose_changes(fake, changeset(expected=SHA3), apply=True)
         self.assertTrue(all(method == "GET" for method, _, _ in fake.calls))
 
+    def test_refuses_stale_base_branch_even_if_file_unchanged(self):
+        fake = FakeGitHub()
+        document = changeset()
+        document["expected_base_sha"] = SHA1
+        with self.assertRaisesRegex(GitHubError, "Base branch changed"):
+            propose_changes(fake, document, apply=True)
+        self.assertTrue(all(method == "GET" for method, _, _ in fake.calls))
+
+    def test_accepts_matching_base_branch_commit(self):
+        fake = FakeGitHub()
+        document = changeset()
+        document["expected_base_sha"] = SHA0
+        output = propose_changes(fake, document)
+        self.assertEqual(output["status"], "PREVIEW")
+
+    def test_rejects_malformed_base_sha(self):
+        document = changeset()
+        document["expected_base_sha"] = "not-a-sha"
+        with self.assertRaises(ValueError):
+            validate_changeset(document)
+
     def test_new_file_only_when_missing(self):
         fake = FakeGitHub(exists=True)
         with self.assertRaises(GitHubError):

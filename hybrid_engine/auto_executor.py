@@ -132,6 +132,7 @@ def run_auto(client: GitHubClient, repo: str, intent: str, *, ref: str | None = 
 
     manifest = {
         "schema_version": 1, "repo": repo, "base": branch,
+        "expected_base_sha": current_sha,
         "title": "chore(security): add missing safe ignore rules",
         "body": (
             "Hybrid Engine deterministic remediation. Adds only missing .gitignore rules; "
