@@ -30,6 +30,7 @@ jobs:
           python -m hybrid_engine gh-auto --help
           python -m hybrid_engine gh-workorder --help
           python -m hybrid_engine gh-execute --help
+          python -m hybrid_engine gh-agent --help
 
       - name: Remote GitHub audit of this repository (main branch only)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'

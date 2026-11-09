@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.6 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.7 experimental / agent-neutral executor, draft PR and evidence gates.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -47,6 +47,29 @@ hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAF
 See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
 
 **This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+
+
+## Universal agent adapter and evidence gates (experimental v0.7)
+
+A provider-neutral stdio protocol now lets a **trusted local agent executable**
+receive a SHA-pinned, exact-file source package and return its reviewed JSON
+patch. The existing gate permits **only a draft PR with explicit `--apply`**.
+ChatGPT may continue using authorized GitHub tools directly; Codex and model
+APIs are not mandatory.
+
+```bash
+hybrid gh-agent --repo OWNER/REPO --goal "HYBRID DEBUG: repair issue" \
+  --path src/app.py --agent-bin /path/to/trusted-adapter
+# Preview by default; --apply creates only a draft PR.
+hybrid gh-verify --repo OWNER/REPO --pr 42 \
+  --require-check "test" --output reports/42.json --strict
+```
+
+This is a transport/protocol, **not a built-in LLM model**. Without an installed
+agent, a ChatGPT GitHub connector, or other code-writing capability, the
+framework cannot invent fixes. Agents are not sandboxed automatically.
+`gh-verify` reads real PR-head evidence and never runs or fabricates CI.
+See [universal executor](docs/UNIVERSAL_EXECUTOR.md).
 
 ## Exact-file scope for larger repositories (v0.6)
 

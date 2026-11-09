@@ -15,6 +15,8 @@ from .runner import run_tests
 from .store import hybrid_dir, initialize, read_state, write_json
 from .taskboard import list_tasks, note_task, start_task, task_status
 from .verification import verify_pr
+from .universal import run_universal
+from .evidence import save_report
 
 
 def markdown_report(report: dict, test: dict) -> str:
@@ -62,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
     gh_verify = sub.add_parser("gh-verify", help="Verify real PR-head CI evidence")
     gh_verify.add_argument("--repo", required=True, help="owner/name")
     gh_verify.add_argument("--pr", required=True, type=int, help="PR number")
+    gh_verify.add_argument("--require-check", action="append", default=[],
+                           help="Expected CI job or status context; repeat for required jobs")
+    gh_verify.add_argument("--output", type=Path, help="Write JSON evidence and adjacent Markdown report")
+    gh_verify.add_argument("--strict", action="store_true", help="Exit nonzero unless every required check passes")
 
     gh_task = sub.add_parser("gh-task", help="Durable task journal in GitHub Issues")
     gh_task.add_argument("action", choices=("start", "list", "status", "note"))
@@ -94,9 +100,22 @@ def main(argv: list[str] | None = None) -> int:
     gh_exec.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
     gh_exec.add_argument("--apply", action="store_true", help="Opt in to draft PR creation")
 
+    gh_agent = sub.add_parser("gh-agent", help="Opt-in agent-neutral stdio executor (draft PR only)")
+    gh_agent.add_argument("--repo", required=True, help="owner/name")
+    gh_agent.add_argument("--goal", required=True, help="HYBRID DEBUG, BUILD or AUDIT-FIX")
+    gh_agent.add_argument("--ref", help="Existing base branch")
+    gh_agent.add_argument("--path", action="append", dest="scope_paths", required=True,
+                          help="Audited exact file; repeat for each source file")
+    gh_agent.add_argument("--agent-bin", required=True, help="Trusted local executable; never a shell string")
+    gh_agent.add_argument("--agent-arg", action="append", default=[], help="Additional argument; repeat")
+    gh_agent.add_argument("--agent-env", action="append", default=[],
+                          help="Explicit environment variable passed to agent, never GitHub tokens")
+    gh_agent.add_argument("--timeout", type=int, default=180)
+    gh_agent.add_argument("--apply", action="store_true", help="Opt-in isolated branch and draft PR")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -108,7 +127,10 @@ def main(argv: list[str] | None = None) -> int:
                 document = json.loads(args.manifest.read_text(encoding="utf-8"))
                 output = propose_changes(client, document, apply=args.apply)
             elif args.command == "gh-verify":
-                output = verify_pr(client, args.repo, args.pr)
+                output = (verify_pr(client, args.repo, args.pr, required_checks=args.require_check)
+                          if args.require_check else verify_pr(client, args.repo, args.pr))
+                if args.output:
+                    save_report(output, args.output.expanduser())
             elif args.command == "gh-auto":
                 output = (run_auto(client, args.repo, args.intent, ref=args.ref,
                                    apply=args.apply, scope_paths=args.scope_paths)
@@ -120,6 +142,13 @@ def main(argv: list[str] | None = None) -> int:
                           if args.scope_paths else prepare(client, args.repo, args.goal, ref=args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
+            elif args.command == "gh-agent":
+                output = run_universal(
+                    client, args.repo, args.goal, args.scope_paths,
+                    [args.agent_bin, *args.agent_arg],
+                    ref=args.ref, apply=args.apply, timeout=args.timeout,
+                    allow_env=args.agent_env,
+                )
             elif args.command == "gh-execute":
                 order = json.loads(args.order.read_text(encoding="utf-8"))
                 manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
@@ -140,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = note_task(client, args.repo, args.issue, args.state,
                                    args.summary, pr_number=args.pr, apply=args.apply)
             print(json.dumps(output, ensure_ascii=False, indent=2))
+            if args.command == "gh-verify" and args.strict and output.get("ci") != "PASSED":
+                return 1
             return 0
         except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
             parser.exit(2, f"hybrid: {exc}\n")
