@@ -16,7 +16,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from .agent_bridge import prepare, submit
-from .github_adapter import GitHubClient, GitHubError, SHA, _repo_path, safe_repo_path
+from .github_adapter import GitHubClient, GitHubError, SHA, _repo_path, validate_change_path
 
 MAX_SOURCE_BYTES = 64 * 1024
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
@@ -45,7 +45,7 @@ def source_package(client: GitHubClient, order: dict) -> dict:
     prefix = _repo_path(order["repo"])
     sources = []
     for raw_path in paths:
-        path = safe_repo_path(raw_path)
+        path = validate_change_path(raw_path)
         data = client.request(
             "GET", prefix + "/contents/" + quote(path, safe="/") + "?ref=" + sha
         )
