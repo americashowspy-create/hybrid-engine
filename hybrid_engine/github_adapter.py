@@ -81,7 +81,8 @@ def validate_ref(ref: str) -> str:
 
 
 def safe_repo_path(raw: str) -> str:
-    if not isinstance(raw, str) or not raw or "\\" in raw or "\x00" in raw or raw.startswith("/"):
+    if (not isinstance(raw, str) or not raw or "\\" in raw or raw.startswith("/")
+            or any(ord(character) < 32 or ord(character) == 127 for character in raw)):
         raise ValueError("Invalid repository path")
     path = PurePosixPath(raw)
     if str(path) != raw or any(part in (".", "..") for part in raw.split("/")):
@@ -95,7 +96,7 @@ def validate_change_path(raw: str) -> str:
     path = safe_repo_path(raw)
     lower = path.lower()
     parts = [part.lower() for part in PurePosixPath(path).parts]
-    if (parts[:2] == [".github", "workflows"]
+    if (parts[:2] == [".github", "workflows"] or parts == [".github", "codeowners"]
             or any(part.startswith(".env") for part in parts)
             or ("supabase" in parts and "migrations" in parts)
             or lower.endswith((".pem", ".key", ".p12", ".pfx"))):
