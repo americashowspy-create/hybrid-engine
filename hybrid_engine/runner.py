@@ -34,5 +34,5 @@ def run_tests(root: Path, *, timeout: int = 180) -> dict:
     return {
         "status": "PASS" if result.returncode == 0 else "FAIL",
         "command": cmd, "exit_code": result.returncode,
-        "output_tail": (result.stdout + "\n" + result.stderr)[-4000:],
+        "output_saved": False,  # Logs may include credentials; never persist them into reports.
     }
