@@ -23,3 +23,5 @@ jobs:
         run: |
           python -m hybrid_engine --help
           python -m hybrid_engine inspect --target .
+          python -m hybrid_engine gh-audit --help
+          python -m hybrid_engine gh-propose --help
