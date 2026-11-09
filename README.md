@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.3 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.4 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -47,6 +47,23 @@ hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAF
 See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
 
 **This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+
+## Guarded automatic execution (v0.4)
+
+One command can route the request, inspect source and (if explicitly requested)
+open a **draft PR for one narrowly defined deterministic remediation**:
+
+```bash
+hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX: audite e corrija"             # preview
+hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX: audite e corrija" --apply    # guarded PR
+hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT"                                  # read-only
+```
+
+Only missing protective **.gitignore rules** are automatically modified in v0.4.
+No other application bug, RLS flaw, token leak or test failure is magically fixed.
+The executor will not run downloaded code, change production, or merge PRs.
+Use the agent-agnostic workflow instructions in `AGENTS.md` for more complex
+changes, and verify CI independently. See [executor guide](docs/AUTO_EXECUTOR.md).
 
 ## GitHub task journal and CI verification (v0.3)
 

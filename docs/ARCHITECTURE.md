@@ -20,3 +20,13 @@ The Core does **not** automatically load and execute external prompt instruction
 - Advanced capability detection; target-project-specific policy; persistent cross-chat state and audit histories; CI validation against fixture repositories.
 
 No production deployment is included in the MVP.
+
+## Optional deterministic executor (v0.4)
+
+`auto_executor.run_auto` selects a workflow from the intent and uses an existing
+read-only GitHub audit plus pinned commit checks. For an explicit `audit-fix`
+intent, it can propose missing protective `.gitignore` patterns, and **only**
+with `--apply` create an isolated draft PR via the existing GitHub adapter.
+It rejects truncated audits, stale snapshots and unsafe file encodings.
+It does not silently install software, execute source, call an LLM or claim
+security fixes outside its specific rule.

@@ -51,3 +51,12 @@ as executable instructions. A task status is a **self-reported note**, not proof
 completion. Cross-check PR-head CI using `hybrid gh-verify` or live GitHub checks.
 Issue writes require explicit `--apply` and correct access. Do not store private
 vulnerability details in public issues.
+
+## Guarded auto-executor (experimental v0.4)
+
+`hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX ..." `
+runs a read-only audit and previews **only** allowlisted, deterministic
+`.gitignore` improvements. Adding `--apply` requests a fresh-branch
+**draft** PR after SHA verification. It cannot fix arbitrary code, policy,
+or runtime vulnerabilities. Use an authorized agent for all other source edits;
+never misrepresent `PREVIEW` or `DRAFT_PR_CREATED` as a verified fix.

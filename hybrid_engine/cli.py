@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .audit import scan
+from .auto_executor import run_auto
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
 from .core import make_plan, route
 from .runner import run_tests
@@ -69,9 +70,15 @@ def main(argv: list[str] | None = None) -> int:
     gh_task.add_argument("--pr", type=int, help="Optional PR associated with note")
     gh_task.add_argument("--apply", action="store_true", help="Explicitly allow start or note writes")
 
+    gh_auto = sub.add_parser("gh-auto", help="Read-only workflow routing with optional guarded draft PR")
+    gh_auto.add_argument("--repo", required=True, help="owner/name")
+    gh_auto.add_argument("--intent", required=True, help="Natural language: HYBRID AUDIT-FIX ...")
+    gh_auto.add_argument("--ref", help="Branch to audit (defaults to repo default)")
+    gh_auto.add_argument("--apply", action="store_true", help="Opt in to a limited safe fix via draft PR")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -83,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = propose_changes(client, document, apply=args.apply)
             elif args.command == "gh-verify":
                 output = verify_pr(client, args.repo, args.pr)
+            elif args.command == "gh-auto":
+                output = run_auto(client, args.repo, args.intent, ref=args.ref, apply=args.apply)
             elif args.action == "start":
                 if not args.goal:
                     raise ValueError("gh-task start requires --goal")
