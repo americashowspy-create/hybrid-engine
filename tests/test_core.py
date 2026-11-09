@@ -58,11 +58,11 @@ class StateTests(unittest.TestCase):
     def test_test_output_is_not_saved(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / "pyproject.toml").write_text("[project]\\nname=\\\"demo\\\"\\n")
+            (root / "pyproject.toml").write_text("[project]\nname='demo'\n")
             (root / "tests").mkdir()
             (root / "tests" / "test_example.py").write_text(
-                "import unittest\\nclass TestExample(unittest.TestCase):\\n"
-                "    def test_case(self):\\n        print(\\\"secret must never appear in report\\\")\\n"
+                "import unittest\nclass TestExample(unittest.TestCase):\n"
+                "    def test_case(self):\n        print('secret must never appear in report')\n"
             )
             data = run_tests(root)
             self.assertEqual(data["status"], "PASS")
