@@ -32,7 +32,7 @@ def route(intent: str) -> str:
     if re.search(r"\b(status|progresso|pendencias|retomar)\b", s):
         return "status"
     if (re.search(r"\b(audit|audite|auditar|auditoria|scan|seguranca|security)\b", s)
-            and re.search(r"\b(corrig|fix|repar|consert|resolver)\w*", s)):
+            and re.search(r"\b(corrig|corrij|fix|repar|consert|resolver)\w*", s)):
         return "audit-fix"
     if re.search(r"\b(audit|audite|auditar|auditoria|scan|seguranca|security)\b", s):
         return "audit"
