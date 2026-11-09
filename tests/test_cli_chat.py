@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,10 +34,20 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(exporter.call_args.kwargs["ref"], None)
 
     def test_execute_accepts_valid_bundle_and_remains_preview(self):
-        order = {"repo": "acme/demo", "scope": {"paths": ["src/demo.py"]}}
+        order = {
+            "schema_version": 1, "kind": "hybrid.agent-work-order",
+            "flow": "debug", "ready_for_proposal": True,
+            "repo": "acme/demo", "base": "main", "base_sha": "a" * 40,
+            "audit": {"complete": True},
+            "scope": {"mode": "exact_files", "paths": ["src/demo.py"], "complete": True},
+        }
+        code = "x = 1\n"
+        data = code.encode("utf-8")
+        sha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\x00" + data).hexdigest()
         bundle = {
             "protocol": "hybrid.agent-stdio.v1", "work_order": order,
-            "sources": [{"path": "src/demo.py"}],
+            "schema_version": 1,
+            "sources": [{"path": "src/demo.py", "expected_sha": sha, "content": code}],
         }
         manifest = {"schema_version": 1}
         with tempfile.TemporaryDirectory() as directory:
