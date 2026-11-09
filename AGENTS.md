@@ -32,3 +32,13 @@ If there is no shell/CI executor, use accessible GitHub connector actions for so
 ## Scope
 
 Avoid gratuitous refactors, overengineering, and long approval loops. User intent and risk determine workflow depth.
+
+## GitHub adapter v0.2
+
+Portable CLI optional commands:
+- `hybrid gh-audit --repo OWNER/REPO [--ref main]`: remote read-only audit; records limitations and NEVER executes downloaded source.
+- `hybrid gh-propose --manifest reviewed.json`: verifies each file SHA, PREVIEW only.
+- `hybrid gh-propose --manifest reviewed.json --apply`: only when the user authorizes this write, create an atomic commit on a new isolated branch and open a DRAFT pull request. No merging or deploy.
+- Use `docs/GITHUB_ADAPTER.md` for syntax and token scopes. ChatGPT may use its connected GitHub actions directly instead; this local CLI is optional.
+
+On all paths: do not present preview as applied, and do not present a draft PR as tested or merged.
