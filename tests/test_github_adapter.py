@@ -42,6 +42,7 @@ class FakeGitHub:
                          "sha": SHA2 if path == "package.json" else SHA3, "size": 100}
                         for path in self.contents
                     ] + [
+                        {"type": "blob", "mode": "100755", "path": "src/app.ts", "sha": SHA3},
                         {"type": "blob", "mode": "120000", "path": "linked.ts", "sha": SHA3}
                     ],
                 }
@@ -131,7 +132,7 @@ class AuditTests(unittest.TestCase):
         self.assertIn("SUPABASE_SECRET", [f["rule"] for f in output["findings"]])
         self.assertNotIn("sb_secret_abcdef123456789", repr(output))
         self.assertTrue(all(method == "GET" for method, _, _ in fake.calls))
-        self.assertEqual(output["files_scanned"], 2)
+        self.assertEqual(output["files_scanned"], 3)
 
     def test_rejects_truncated_tree(self):
         with self.assertRaises(GitHubError):
@@ -170,6 +171,7 @@ class ProposalTests(unittest.TestCase):
         self.assertTrue(posts[-1][1]["draft"])
         self.assertTrue(posts[-2][0].endswith("/git/refs"))
         self.assertEqual(posts[-3][1]["parents"], [SHA0])
+        self.assertEqual(posts[1][1]["tree"][0]["mode"], "100755")
 
 
 if __name__ == "__main__":
