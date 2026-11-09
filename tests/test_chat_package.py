@@ -17,9 +17,9 @@ ORDER = {
     "ready_for_proposal": True,
     "scope": {"mode": "exact_files", "paths": ["src/demo.py"], "complete": True},
 }
-CODE = "SECRET_CODE_CONTENT = 'private'\\n"
+CODE = "SECRET_CODE_CONTENT = 'private'\n"
 BYTES = CODE.encode("utf-8")
-BLOB = hashlib.sha1(b"blob " + str(len(BYTES)).encode() + b"\\x00" + BYTES).hexdigest()
+BLOB = hashlib.sha1(b"blob " + str(len(BYTES)).encode() + b"\x00" + BYTES).hexdigest()
 BUNDLE = {
     "schema_version": 1, "protocol": "hybrid.agent-stdio.v1",
     "work_order": ORDER,
