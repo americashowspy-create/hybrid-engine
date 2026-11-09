@@ -24,6 +24,29 @@ class ChatCliTests(unittest.TestCase):
         self.assertEqual(result, expected)
         verify.assert_called_once_with(gh.return_value, "acme/demo", 7)
 
+    def test_verify_strict_required_check_blocks_false_green(self):
+        with patch("hybrid_engine.cli.GitHubClient") as client, \
+             patch("hybrid_engine.cli.verify_pr",
+                   return_value={"ci": "MISSING_REQUIRED"}) as verify:
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                rc = main(["gh-verify", "--repo", "acme/demo", "--pr", "7",
+                           "--require-check", "security", "--strict"])
+        self.assertEqual(rc, 1)
+        verify.assert_called_once_with(client.return_value, "acme/demo", 7,
+                                       required_checks=["security"])
+
+    def test_cli_agent_preview_passes_explicit_arguments(self):
+        with patch("hybrid_engine.cli.GitHubClient") as client, \
+             patch("hybrid_engine.cli.run_universal",
+                   return_value={"status": "PREVIEW"}) as adapter:
+            result, output = self.invoke(["gh-agent", "--repo", "acme/demo",
+                "--goal", "HYBRID DEBUG", "--path", "src/app.py",
+                "--agent-bin", "trusted-agent", "--agent-arg=--json"])
+        self.assertEqual(result, 0)
+        self.assertEqual(output["status"], "PREVIEW")
+        self.assertFalse(adapter.call_args.kwargs["apply"])
+
     def test_start_does_not_apply_unless_opted_in(self):
         with patch("hybrid_engine.cli.GitHubClient"), \
                 patch("hybrid_engine.cli.start_task", return_value={"status": "PREVIEW"}) as start:
