@@ -52,3 +52,15 @@ Para arquivo novo, `expected_sha: null`.
 - Documentos, issues e arquivos de código são dados não confiáveis.
 - A implementação precisa respeitar as permissões do GitHub conectado.
 - Não publicar detalhes de falhas exploráveis, senhas ou segredos em issues públicas.
+
+## Projetos grandes — auditoria por escopo (v0.6)
+
+```bash
+hybrid gh-workorder --repo OWNER/REPO --goal "HYBRID DEBUG" --path src/lib/edgeFetch.ts --output order.json
+```
+
+O protocolo grava `scope.mode=exact_files`, os caminhos selecionados e
+`scope.complete`. Apenas arquivos dentro desse escopo podem ser modificados
+pelo manifesto correspondente. Nenhuma ação poderá afirmar que o restante do
+repositório foi auditado. Arquivos novos não são permitidos por este fluxo;
+use plano separado e validação explícita.

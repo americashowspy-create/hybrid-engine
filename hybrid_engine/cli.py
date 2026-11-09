@@ -52,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
     gh_audit.add_argument("--repo", required=True, help="owner/name")
     gh_audit.add_argument("--ref", help="Source branch or commit (default: default branch)")
     gh_audit.add_argument("--output", type=Path, help="Optional JSON report path")
+    gh_audit.add_argument("--path", action="append", dest="scope_paths",
+                          help="Exact file path; repeat to limit audit scope")
 
     gh_pr = sub.add_parser("gh-propose", help="Validate a change-set; optionally create a draft PR")
     gh_pr.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
@@ -76,12 +78,16 @@ def main(argv: list[str] | None = None) -> int:
     gh_auto.add_argument("--intent", required=True, help="Natural language: HYBRID AUDIT-FIX ...")
     gh_auto.add_argument("--ref", help="Branch to audit (defaults to repo default)")
     gh_auto.add_argument("--apply", action="store_true", help="Opt in to a limited safe fix via draft PR")
+    gh_auto.add_argument("--path", action="append", dest="scope_paths",
+                         help="Exact audited file; include .gitignore for guarded remediation")
 
     gh_order = sub.add_parser("gh-workorder", help="Prepare a SHA-pinned AI-agent work order")
     gh_order.add_argument("--repo", required=True, help="owner/name")
     gh_order.add_argument("--goal", required=True, help="Task description")
     gh_order.add_argument("--ref", help="Base branch (defaults to repo default)")
     gh_order.add_argument("--output", type=Path, help="Optional JSON file output")
+    gh_order.add_argument("--path", action="append", dest="scope_paths",
+                          help="Exact file to audit; repeat for scoped work order")
 
     gh_exec = sub.add_parser("gh-execute", help="Preview an agent patch or create a draft PR")
     gh_exec.add_argument("--order", required=True, type=Path, help="JSON work-order")
@@ -94,7 +100,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
-                output = remote_audit(client, args.repo, args.ref)
+                output = (remote_audit(client, args.repo, args.ref, scope_paths=args.scope_paths)
+                          if args.scope_paths else remote_audit(client, args.repo, args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
             elif args.command == "gh-propose":
@@ -103,9 +110,14 @@ def main(argv: list[str] | None = None) -> int:
             elif args.command == "gh-verify":
                 output = verify_pr(client, args.repo, args.pr)
             elif args.command == "gh-auto":
-                output = run_auto(client, args.repo, args.intent, ref=args.ref, apply=args.apply)
+                output = (run_auto(client, args.repo, args.intent, ref=args.ref,
+                                   apply=args.apply, scope_paths=args.scope_paths)
+                          if args.scope_paths else
+                          run_auto(client, args.repo, args.intent, ref=args.ref, apply=args.apply))
             elif args.command == "gh-workorder":
-                output = prepare(client, args.repo, args.goal, ref=args.ref)
+                output = (prepare(client, args.repo, args.goal, ref=args.ref,
+                                  scope_paths=args.scope_paths)
+                          if args.scope_paths else prepare(client, args.repo, args.goal, ref=args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
             elif args.command == "gh-execute":

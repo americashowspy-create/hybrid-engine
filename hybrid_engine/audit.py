@@ -38,7 +38,7 @@ def detect_stack(root: Path) -> list[str]:
     return [name for name, paths in signals.items() if any((root / path).exists() for path in paths)]
 
 
-def scan(root: Path) -> dict:
+def scan(root: Path, *, include_paths: set[str] | None = None) -> dict:
     root = root.resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
@@ -51,7 +51,13 @@ def scan(root: Path) -> dict:
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
         for filename in sorted(filenames):
             path = Path(current) / filename
-            if path.is_symlink() or (path.suffix.lower() not in SCANNABLE and filename not in EXTRA_NAMES):
+            relative = path.relative_to(root).as_posix()
+            if path.is_symlink():
+                continue
+            if include_paths is not None:
+                if relative not in include_paths:
+                    continue
+            elif path.suffix.lower() not in SCANNABLE and filename not in EXTRA_NAMES:
                 continue
             if scanned >= MAX_FILES:
                 truncated = True

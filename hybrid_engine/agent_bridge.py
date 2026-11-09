@@ -17,7 +17,8 @@ MUTATING = frozenset(("audit-fix", "build", "debug"))
 MAX_FINDINGS = 100
 
 
-def prepare(client: GitHubClient, repo: str, goal: str, ref: str | None = None) -> dict:
+def prepare(client: GitHubClient, repo: str, goal: str, ref: str | None = None,
+            *, scope_paths: list[str] | None = None) -> dict:
     """Read repository and prepare a bounded, evidence-pinned agent assignment."""
     repo = validate_repo(repo)
     goal = _safe_text(goal, 1800, "goal")
@@ -26,7 +27,8 @@ def prepare(client: GitHubClient, repo: str, goal: str, ref: str | None = None) 
         if SHA.fullmatch(ref):
             raise ValueError("Work orders require a branch ref, not a detached commit.")
     plan = make_plan(goal, "github:" + repo)
-    audit = remote_audit(client, repo, ref)
+    audit = (remote_audit(client, repo, ref, scope_paths=scope_paths)
+             if scope_paths is not None else remote_audit(client, repo, ref))
     base, live_sha = head_at(client, repo, ref)
     audited_sha = audit.get("source_sha")
     if not isinstance(audited_sha, str) or not SHA.fullmatch(audited_sha):
@@ -40,7 +42,14 @@ def prepare(client: GitHubClient, repo: str, goal: str, ref: str | None = None) 
         audit.get("truncated") or audit.get("files_unavailable", 0)
         or audit.get("files_skipped", 0) or len(findings) > MAX_FINDINGS
     )
+    scope = audit.get("scope")
+    if scope is not None:
+        complete = bool(complete and isinstance(scope, dict)
+                        and scope.get("mode") == "exact_files"
+                        and scope.get("complete") is True)
     return {
+        "scope": scope,
+        "scope_limited": scope is not None,
         "schema_version": 1, "kind": KIND, "repo": repo, "base": base,
         "base_sha": audited_sha, "goal": goal, "flow": plan["flow"],
         "plan_id": plan["id"], "steps": plan["steps"], "gates": plan["gates"],
@@ -82,6 +91,17 @@ def submit(client: GitHubClient, order: dict[str, Any], manifest: dict[str, Any]
     if not isinstance(audit, dict) or audit.get("complete") is not True:
         raise ValueError("Incomplete audit cannot authorize changes.")
     changes = validate_changeset(manifest)
+    scope = order.get("scope")
+    if scope is not None:
+        if not isinstance(scope, dict) or scope.get("mode") != "exact_files" or scope.get("complete") is not True:
+            raise ValueError("Invalid or incomplete work-order scope.")
+        allowed = scope.get("paths")
+        if not isinstance(allowed, list) or not allowed or not all(isinstance(p, str) for p in allowed):
+            raise ValueError("Invalid scope path set.")
+        if any(item["path"] not in allowed for item in changes["changes"]):
+            raise ValueError("Change-set contains files outside the audited exact-file scope.")
+        if any(item["expected_sha"] is None for item in changes["changes"]):
+            raise ValueError("Scoped work orders cannot create files not scanned.")
     if changes["repo"] != repo or changes["base"] != base or changes.get("expected_base_sha") != pinned:
         raise ValueError("Change-set does not match audited repository, branch and SHA.")
     result = propose_changes(client, manifest, apply=apply)
