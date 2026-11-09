@@ -17,6 +17,7 @@ from .taskboard import list_tasks, note_task, start_task, task_status
 from .verification import verify_pr
 from .universal import run_universal
 from .evidence import save_report
+from .chat_package import export_chat_package, work_order_from_bundle
 
 
 def markdown_report(report: dict, test: dict) -> str:
@@ -96,7 +97,9 @@ def main(argv: list[str] | None = None) -> int:
                           help="Exact file to audit; repeat for scoped work order")
 
     gh_exec = sub.add_parser("gh-execute", help="Preview an agent patch or create a draft PR")
-    gh_exec.add_argument("--order", required=True, type=Path, help="JSON work-order")
+    gh_exec_source = gh_exec.add_mutually_exclusive_group(required=True)
+    gh_exec_source.add_argument("--order", type=Path, help="JSON work-order")
+    gh_exec_source.add_argument("--bundle", type=Path, help="SHA-pinned chat package JSON")
     gh_exec.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
     gh_exec.add_argument("--apply", action="store_true", help="Opt in to draft PR creation")
 
@@ -113,9 +116,18 @@ def main(argv: list[str] | None = None) -> int:
     gh_agent.add_argument("--timeout", type=int, default=180)
     gh_agent.add_argument("--apply", action="store_true", help="Opt-in isolated branch and draft PR")
 
+    gh_chat = sub.add_parser("gh-chat-package", help="Write scoped SHA-pinned code bundle for a connected chat agent")
+    gh_chat.add_argument("--repo", required=True, help="owner/name")
+    gh_chat.add_argument("--goal", required=True, help="HYBRID DEBUG / AUDIT-FIX / BUILD goal")
+    gh_chat.add_argument("--ref", help="Target branch (default: default branch)")
+    gh_chat.add_argument("--path", action="append", dest="scope_paths", required=True,
+                         help="Audited exact file path (repeat, max 20)")
+    gh_chat.add_argument("--output", required=True, type=Path,
+                         help="New private local JSON filename; no source code printed")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent", "gh-chat-package"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -142,6 +154,11 @@ def main(argv: list[str] | None = None) -> int:
                           if args.scope_paths else prepare(client, args.repo, args.goal, ref=args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
+            elif args.command == "gh-chat-package":
+                output = export_chat_package(
+                    client, args.repo, args.goal, args.scope_paths, args.output,
+                    ref=args.ref,
+                )
             elif args.command == "gh-agent":
                 output = run_universal(
                     client, args.repo, args.goal, args.scope_paths,
@@ -150,7 +167,11 @@ def main(argv: list[str] | None = None) -> int:
                     allow_env=args.agent_env,
                 )
             elif args.command == "gh-execute":
-                order = json.loads(args.order.read_text(encoding="utf-8"))
+                if args.bundle is not None:
+                    bundle = json.loads(args.bundle.read_text(encoding="utf-8"))
+                    order = work_order_from_bundle(bundle)
+                else:
+                    order = json.loads(args.order.read_text(encoding="utf-8"))
                 manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
                 output = submit(client, order, manifest, apply=args.apply)
             elif args.action == "start":
