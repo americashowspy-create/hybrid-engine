@@ -96,8 +96,13 @@ hybrid gh-verify --repo OWNER/REPO --pr 123 \
   --require-check test --strict --output /tmp/hybrid-pr-evidence.json
 ```
 
-The `--bundle` path avoids retyping or copying the work order. The manifest
-still passes the existing audited scope, base commit and blob SHA gates. To
+The `--bundle` path avoids retyping or copying the work order. When loading
+the package, the CLI additionally validates the work-order schema, complete
+exact-file scope, SHA formats and the **Git blob SHA-1 of each UTF-8 source**.
+A corrupted or tampered export is rejected before the PR gate. This integrity
+check is **not an authenticity signature**: the package's origin and model
+provider must still be trusted. The manifest then passes the existing audited
+scope, live GitHub branch/base commit and blob SHA gates. To
 prevent untrusted providers from accessing credentials, prefer connected chat
 GitHub tools; if running a local agent binary, read the limitations in
 [UNIVERSAL_EXECUTOR.md](UNIVERSAL_EXECUTOR.md).
