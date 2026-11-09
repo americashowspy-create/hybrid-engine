@@ -1,226 +1,190 @@
-# Hybrid Engine
+# ⚡ Hybrid Engine
 
-**Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
+**Do pedido à Pull Request, com diagnóstico, controle de risco e evidências.**
 
-> **Status: v0.8 experimental / ChatGPT source bundles, optional agent executor and evidence gates.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+Um framework **chat-first e independente de agente** para organizar auditorias, correções e desenvolvimento de software. Combina planejamento orientado a especificações, investigação de problemas, alterações pequenas e verificações rastreáveis — sem amarrar o fluxo ao Codex ou a um único provedor.
 
-## In one minute
+**Versão:** `v0.8` (experimental) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
-From a terminal with Python 3.11+:
+> [!IMPORTANT]
+> O Hybrid Engine **não é um plugin nativo do ChatGPT nem uma IA própria**. É um protocolo aberto com ferramentas Python opcionais. O agente precisa ter acesso real ao código e permissão para executar cada etapa. Uma URL, sozinha, não instala ferramentas nem concede acesso.
 
-```bash
-python -m pip install .
-hybrid init --target /path/to/your/project
-hybrid inspect --target /path/to/your/project
-hybrid run --target /path/to/your/project --intent "audite, corrija e teste" --tests
-hybrid status --target /path/to/your/project
-```
+**[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
 
-The `run` command **routes the request**, produces a durable execution plan, runs a safe static security scan, and optionally runs the project's existing test script. It **does not** autonomously edit arbitrary source code, merge PRs or deploy. Those require an authorized agent/executor, connected tools and their permissions.
+---
 
-## Use straight from ChatGPT
-
-Send this repository URL and your target project URL to a ChatGPT conversation with GitHub access, then ask:
+## O que o Hybrid Engine faz?
 
 ```text
-Use the workflow in https://github.com/americashowspy-create/hybrid-engine/blob/main/AGENTS.md
-Project: https://github.com/OWNER/REPOSITORY
-Command: HYBRID AUTO
-Goal: inspect the project, diagnose root causes, fix safe issues in a branch,
-run the available tests and open a PR with evidence.
-Never claim tests ran unless there is a run log.
-Do not merge, deploy, or change production data without approval.
+Pedido no ChatGPT ou em outro agente
+                 │
+                 ▼
+ Entender objetivo e repositório
+                 │
+                 ▼
+ Auditar e investigar (escopo definido)
+                 │
+                 ▼
+ Planejar a menor mudança segura
+                 │
+                 ▼
+ Branch isolada + correção revisável
+                 │
+                 ▼
+ Testes / evidências / limites
+                 │
+                 ▼
+ Pull Request DRAFT + relatório + rollback
 ```
 
-**Important:** A URL is documentation, not executable software or automatic permission. The assistant needs to read the instructions and use its connected GitHub and execution tools. In chat environments without a terminal, the agent can inspect, edit and create PRs if connected, but cannot honestly claim local tests have run. CI can provide verifiable results.
+A ação de escrever código é feita pelo **agente conectado** (ou por um desenvolvedor). A CLI auxilia no planejamento, na auditoria, na preparação do pacote de fontes e nas validações; **não inventa correções sozinha**.
 
-## ChatGPT-first one-command workflow (v0.8 experimental)
+## 🚀 Experimente diretamente no ChatGPT
 
-Paste the target URL in ChatGPT together with:
+Não é preciso instalar Python ou Codex para seguir o protocolo **quando o ChatGPT dispõe de conexão GitHub com as permissões necessárias**.
+
+1. Abra um chat novo e conecte a conta GitHub, conforme os recursos disponíveis na sua conta.
+2. Certifique-se de que o agente pode ler o **Hybrid Engine** e o **repositório que será analisado**.
+3. Cole o comando abaixo, substituindo `OWNER/REPOSITORY` pelo seu projeto.
 
 ```text
-HYBRID AUTO
-Projeto: https://github.com/OWNER/REPOSITORY
-Audite, encontre um problema fundamentado, corrija em uma branch,
-teste com evidências disponíveis e entregue uma PR draft.
-Não faça merge ou deploy em produção.
+HYBRID AUTO — v0.8
+
+Framework:
+https://github.com/americashowspy-create/hybrid-engine
+
+Projeto:
+https://github.com/OWNER/REPOSITORY
+
+Leia o AGENTS.md e docs/CHATGPT_AUTO.md do framework
+e as instruções do repositório alvo.
+
+Audite, identifique um problema real e de baixo risco, verifique se já
+existe correção em andamento e proponha a menor solução possível.
+Com autorização e ferramentas disponíveis, implemente em branch isolada,
+execute testes offline seguros e abra uma Pull Request em Draft.
+
+Documente diagnóstico, arquivos alterados, comandos/testes realmente
+executados, resultados, riscos e rollback.
+Não faça merge, deploy, migrações ou mudanças em dados/credenciais de produção.
+Não dispare GitHub Actions desnecessariamente e não declare testes não
+executados como aprovados.
 ```
 
-An agent with connected GitHub tools can perform the inspected, SHA-bound
-source changes directly **without Codex**. This is a portable instruction
-protocol, not an executable ChatGPT plugin: external tools and their
-permissions must actually be available. No unrestricted automatic fixing is
-claimed. If GitHub Actions quota is exhausted, tests stay `CI_NOT_RUN`
-rather than falsely passing.
+**Entrega esperada:** link da PR (se autorizada e tecnicamente possível), diagnóstico, commit/arquivos envolvidos, evidências e pendências. Se faltar acesso, ferramenta ou ambiente, o resultado correto é **explicar o bloqueio**, não inventar uma PR.
 
-The optional CLI now packages scoped source privately for another agent:
+➡️ Veja o passo a passo em [Comece aqui](docs/COMECE_AQUI.md) e as variações de comando em [Exemplos](docs/EXEMPLOS_DE_COMANDOS.md).
+
+## ✨ Funcionalidades disponíveis na v0.8
+
+| Recurso | O que entrega |
+| --- | --- |
+| **HYBRID AUTO** | Protocolo que direciona auditoria, investigação, correção ou planejamento conforme o objetivo. |
+| **AUDIT / AUDIT-FIX / DEBUG / BUILD / REVIEW / STATUS** | Fluxos específicos para análise, correção, criação, revisão e continuidade. |
+| **Auditoria estática** | Sinais heurísticos de segurança/qualidade, relatados com escopo e limitações. |
+| **Planos e relatórios** | Estado local em `.hybrid/`, plano estruturado e evidências documentadas. |
+| **Escopo exato e SHA** | Work orders vinculadas ao commit e aos arquivos auditados; rejeição de alterações fora do escopo. |
+| **Pacote para agente** | `gh-chat-package` exporta código auditado em arquivo privado, para um agente autorizado. |
+| **Prévia e PR Draft** | `gh-execute` valida um manifesto; `--apply` autoriza somente branch nova e PR Draft. |
+| **Verificação de CI** | `gh-verify` consulta checks reais do HEAD da PR; não dispara testes nem inventa aprovação. |
+| **Acompanhamento opcional** | `gh-task` usa GitHub Issues como diário da tarefa, com alterações explícitas. |
+| **Adaptador agnóstico** | `gh-agent` suporta um executável local confiável via protocolo JSON/stdio. |
+
+**Limites importantes:** o scanner **não é pentest**; uma auditoria ampla pode parar no limite de 250 arquivos; o fluxo por pacote usa até 20 arquivos exatos (até 64 KiB por fonte). Correções arbitrárias exigem um agente com capacidade de editar código. Não há merge, deploy ou acesso à produção automáticos.
+
+## 🧭 Escolha o comando certo
+
+| Comando | Quando usar |
+| --- | --- |
+| `HYBRID AUTO` | “Analise e decida a abordagem adequada.” |
+| `HYBRID AUDIT` | “Quero entender problemas e riscos, sem alterar código.” |
+| `HYBRID AUDIT-FIX` | “Investigue e corrija algo comprovado, com controles.” |
+| `HYBRID DEBUG` | “Tenho um erro específico para reproduzir e corrigir.” |
+| `HYBRID BUILD` | “Quero desenvolver uma funcionalidade com critérios de aceite.” |
+| `HYBRID REVIEW` | “Revise um conjunto de mudanças ou uma PR.” |
+| `HYBRID STATUS` | “Retome uma tarefa a partir de estado/evidências disponíveis.” |
+
+Todos são **instruções de workflow para um agente**, não comandos oficiais embutidos no ChatGPT.
+
+## 💻 Uso opcional pelo terminal
+
+A CLI é feita em Python, usa apenas a biblioteca padrão em tempo de execução e não requer assinatura de modelo. Na raiz de um clone do repositório:
 
 ```bash
-hybrid gh-chat-package --repo OWNER/REPO \
-  --goal "HYBRID DEBUG: repair the bug" --path src/example.py \
-  --output /tmp/hybrid-chat.json
+python3 -m pip install .
+hybrid --version
+hybrid init --target /caminho/do/projeto
+hybrid inspect --target /caminho/do/projeto
+hybrid run --target /caminho/do/projeto --intent "audite este projeto"
+hybrid status --target /caminho/do/projeto
+```
+
+`hybrid run` **planeja e audita**; só tenta executar testes existentes com `--tests` (revise esses scripts antes, pois podem ter efeitos colaterais). Ele **não edita código automaticamente**.
+
+Operações remotas via GitHub:
+
+```bash
+# Auditoria remota, sem alteração no GitHub:
+hybrid gh-audit --repo OWNER/REPOSITORY --ref main
+
+# Ordem de trabalho e pacote de código, limitados a arquivo específico:
+hybrid gh-chat-package --repo OWNER/REPOSITORY \
+  --goal "HYBRID DEBUG: corrigir erro" \
+  --path src/app.py --output /tmp/hybrid-chat.json
+
+# Conferir manifesto preparado por um agente (somente preview):
 hybrid gh-execute --bundle /tmp/hybrid-chat.json \
-  --manifest /tmp/reviewed-changeset.json
-# Only when authorized: add --apply to open a draft PR, never merge.
+  --manifest /tmp/reviewed-change.json
+
+# Se expressamente autorizado, adicionar --apply cria APENAS uma PR Draft.
 ```
 
-[ChatGPT AUTO protocol](docs/CHATGPT_AUTO.md). Package output is 0600
-and contains private code; do not commit/share it with an unapproved provider.
+O arquivo `reviewed-change.json` **não é gerado automaticamente pela CLI**: deve conter as alterações preparadas e revisadas por um agente ou desenvolvedor. Para repositórios privados, a CLI usa um token GitHub de escopo mínimo (`GH_TOKEN`); no ChatGPT conectado, o acesso é realizado pelas ferramentas da própria conexão, quando disponíveis. [Guia técnico do adaptador](docs/GITHUB_ADAPTER.md).
 
-## GitHub adapter (v0.2)
+## 🔒 Segurança, privacidade e custos
 
-New optional commands can inspect a GitHub repository remotely **without running its code**, or apply an explicitly reviewed multi-file change-set to a **new branch and draft PR**. No Codex or LLM API is needed. A scoped `GH_TOKEN` is required to access private repositories with this local CLI.
+- **Sem ações silenciosas de alto impacto:** mudanças em produção, migrações, credenciais, merge e deploy exigem autorização separada.
+- **Mudanças rastreáveis:** branch isolada, validação de SHAs, PR Draft e instrução de rollback.
+- **Resultados honestos:** `PASSED`, `FAILED` e `NOT_RUN` têm significados distintos; check ausente não é aprovação.
+- **Código privado:** confirme quem terá acesso aos arquivos antes de usar provedores/agentes externos; não compartilhe tokens nem bundles em issues ou logs.
+- **Custo controlado:** testes locais não usam minutos de runners hospedados pelo GitHub, mas outros ambientes (por exemplo, sandboxes) **podem consumir franquia ou gerar cobrança própria**.
+
+Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo completo de ChatGPT](docs/CHATGPT_AUTO.md).
+
+## 🧪 Qualidade e estado do projeto
+
+A v0.8 teve **124 testes Python aprovados em execução offline isolada**, incluindo quatro casos de ponta a ponta com um **GitHub simulado**; os 33 arquivos Python foram comparados ao commit testado via Git blob SHA. Essa evidência está registrada na [PR #9](https://github.com/americashowspy-create/hybrid-engine/pull/9).
+
+**O que isso comprova:** funcionamento da suíte e das simulações naquele commit. **O que não comprova:** que todo projeto de terceiros funcionará, que um agente externo terá acesso ou que o CI hospedado passou. Um piloto em repositório externo deve ser avaliado separadamente.
+
+Para contribuir ou validar localmente:
 
 ```bash
-hybrid gh-audit --repo OWNER/REPO --ref main --output audit.json
-hybrid gh-propose --manifest reviewed-changeset.json             # preview, NO writes
-hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAFT PR
+python3 -m unittest discover -s tests -v
+python3 -m compileall -q hybrid_engine tests
+python3 -m hybrid_engine --help
 ```
 
-See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
+## 🤝 Quer testar com amigos?
 
-**This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+O projeto está **privado neste momento**. Pessoas convidadas ao repositório podem ler a documentação e testar em seus **próprios projetos**, com suas próprias permissões GitHub. Dar acesso ao framework **não exige** dar acesso aos outros repositórios do proprietário.
 
+Comece por [Comece aqui](docs/COMECE_AQUI.md), veja os [prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md) e envie feedback seguindo [Como contribuir](CONTRIBUTING.md). Não compartilhe projetos privados com terceiros sem autorização dos responsáveis.
 
-## Universal agent adapter and evidence gates (experimental v0.7)
+## 📚 Documentação
 
-A provider-neutral stdio protocol now lets a **trusted local agent executable**
-receive a SHA-pinned, exact-file source package and return its reviewed JSON
-patch. The existing gate permits **only a draft PR with explicit `--apply`**.
-ChatGPT may continue using authorized GitHub tools directly; Codex and model
-APIs are not mandatory.
+- [Comece aqui — primeiros passos e beta](docs/COMECE_AQUI.md)
+- [Exemplos de comandos para copiar](docs/EXEMPLOS_DE_COMANDOS.md)
+- [Protocolo portátil do agente](AGENTS.md)
+- [HYBRID AUTO no ChatGPT](docs/CHATGPT_AUTO.md)
+- [Arquitetura](docs/ARCHITECTURE.md) · [Workflows](docs/WORKFLOWS.md)
+- [Adaptador GitHub](docs/GITHUB_ADAPTER.md) · [Executor universal](docs/UNIVERSAL_EXECUTOR.md)
+- [Auditoria com escopo](docs/SCOPED_AUDIT.md) · [Verificação e evidências](docs/TASK_JOURNAL.md)
+- [Segurança](docs/SECURITY.md) · [Agradecimentos](ACKNOWLEDGEMENTS.md)
+- [English overview](docs/README_EN.md)
 
-```bash
-hybrid gh-agent --repo OWNER/REPO --goal "HYBRID DEBUG: repair issue" \
-  --path src/app.py --agent-bin /path/to/trusted-adapter
-# Preview by default; --apply creates only a draft PR.
-hybrid gh-verify --repo OWNER/REPO --pr 42 \
-  --require-check "test" --output reports/42.json --strict
-```
+---
 
-This is a transport/protocol, **not a built-in LLM model**. Without an installed
-agent, a ChatGPT GitHub connector, or other code-writing capability, the
-framework cannot invent fixes. Agents are not sandboxed automatically.
-`gh-verify` reads real PR-head evidence and never runs or fabricates CI.
-See [universal executor](docs/UNIVERSAL_EXECUTOR.md).
+**Projeto independente**, inspirado em conceitos do [GitHub Spec Kit](https://github.com/github/spec-kit) e [Superpowers](https://github.com/obra/superpowers). Não é fork, integração oficial ou produto afiliado a esses projetos.
 
-## Exact-file scope for larger repositories (v0.6)
-
-The default full-source audit retains a conservative 250-file cap. For larger
-projects (such as MonitorSolar), use **explicit exact-file scoping**, without
-pretending the entire repository was checked:
-
-```bash
-hybrid gh-audit --repo OWNER/REPO --path .gitignore
-hybrid gh-workorder --repo OWNER/REPO --goal "HYBRID AUDIT-FIX: secure ignore rules" --path .gitignore --output order.json
-hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX" --path .gitignore
-```
-
-The audit response includes `scope.mode=exact_files`, the specific paths and
-`scope.complete`. The agent patch gate rejects files outside the audit scope,
-and scoped work orders cannot create uninspected files. A scope of one file is
-**not** a full security audit. The default read-only command without `--path`
-still reports incomplete coverage on large repos; no bypass was introduced.
-See [Scoped audit guide](docs/SCOPED_AUDIT.md).
-
-## AI-agent work orders (v0.5)
-
-A CLI or ChatGPT agent can prepare a **commit-pinned work order**,
-investigate source, create a reviewed change-set and submit it via an evidence gate.
-**Codex is optional; no model API is bundled or required.**
-
-```bash
-hybrid gh-workorder --repo OWNER/REPO --goal "HYBRID DEBUG: corrigir bug" --output order.json
-# Have an authorized coding agent inspect source and author a reviewed change-set:
-hybrid gh-execute --order order.json --manifest reviewed-change.json          # PREVIEW
-hybrid gh-execute --order order.json --manifest reviewed-change.json --apply  # draft PR
-hybrid gh-verify --repo OWNER/REPO --pr 123
-```
-
-The JSON change-set must contain `expected_base_sha` matching the work order
-and the actual Git blob SHA for each existing file. A changed branch or file
-invalidates the proposal. None of these commands automatically generates
-arbitrary fixes or tests the running application. ChatGPT can perform equivalent
-operations through its connected GitHub tools instead of this CLI.
-See [Agent handoff guide](docs/AGENT_HANDOFF.md).
-
-## Guarded automatic execution (v0.4)
-
-One command can route the request, inspect source and (if explicitly requested)
-open a **draft PR for one narrowly defined deterministic remediation**:
-
-```bash
-hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX: audite e corrija"             # preview
-hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT-FIX: audite e corrija" --apply    # guarded PR
-hybrid gh-auto --repo OWNER/REPO --intent "HYBRID AUDIT"                                  # read-only
-```
-
-Only missing protective **.gitignore rules** are automatically modified in v0.4.
-No other application bug, RLS flaw, token leak or test failure is magically fixed.
-The executor will not run downloaded code, change production, or merge PRs.
-Use the agent-agnostic workflow instructions in `AGENTS.md` for more complex
-changes, and verify CI independently. See [executor guide](docs/AUTO_EXECUTOR.md).
-
-## GitHub task journal and CI verification (v0.3)
-
-Works with GitHub Issues as a persistent task history across ChatGPT conversations.
-No Codex or external agent API is required. All state-changing operations
-default to **PREVIEW** and require `--apply` explicitly.
-
-```bash
-hybrid gh-task start --repo OWNER/REPO --goal "Audite o sistema"     # preview
-hybrid gh-task start --repo OWNER/REPO --goal "Audite o sistema" --apply
-hybrid gh-task list --repo OWNER/REPO
-hybrid gh-task status --repo OWNER/REPO --issue 15
-hybrid gh-task note --repo OWNER/REPO --issue 15 --state blocked --summary "Missing test credentials"
-hybrid gh-task note --repo OWNER/REPO --issue 15 --state review_ready --summary "PR ready" --pr 16 --apply
-hybrid gh-verify --repo OWNER/REPO --pr 16
-```
-
-Requires a GitHub token with Issues permissions for writes; use least privilege.
-**Public repository issues are public**: do not put private security findings,
-secrets or sensitive business data into task goals or summaries.
-
-`gh-verify` consults the live PR-head SHA and its reported GitHub checks.
-`PASSED` means the observed checks passed, **not** that all tests exist or
-the application is safe. Neither command merges or deploys. See
-[task journal guide](docs/TASK_JOURNAL.md).
-
-## Commands
-
-| Command (conversation) | CLI example | Intent |
-| --- | --- | --- |
-| HYBRID AUTO | `hybrid run --intent "auto: ..." --target .` | Select appropriate steps |
-| HYBRID AUDIT | `hybrid run --intent "audit" --target .` | Security & quality triage |
-| HYBRID AUDIT-FIX | `hybrid run --intent "audite e corrija" --target .` | Plan + scan; agent applies fixes |
-| HYBRID DEBUG | `hybrid run --intent "corrija o bug" --target .` | Root-cause-first |
-| HYBRID BUILD | `hybrid run --intent "crie uma funcionalidade" --target .` | Specification-first |
-| HYBRID REVIEW | `hybrid run --intent "revise o PR" --target .` | Scope & change review |
-| HYBRID STATUS | `hybrid status --target .` | Resume state |
-
-## Deliverables
-
-- `.hybrid/state.json`: last request, selected workflow, status and artifact paths.
-- `.hybrid/plans/<id>.json`: machine-readable work plan with stages and quality gates.
-- `.hybrid/reports/<id>.json`: security findings, stack detection, limitations and evidence (paths and line numbers, no secret values).
-- `.hybrid/reports/<id>.md`: human-readable report.
-
-## Safety defaults
-
-- No production writes, merges or deploys.
-- No automatic arbitrary shell command execution.
-- Tests run **only** with `--tests`, using a recognized project test command; existing scripts should be reviewed because they may have side effects.
-- Static scan is heuristic, is not a penetration test, and cannot prove a site secure. Sensitive findings are redacted.
-- Every terminal status and CI claim must be backed by a real tool result.
-- Work in an isolated branch and request review for meaningful modifications.
-
-See [Architecture](docs/ARCHITECTURE.md), [workflow protocol](docs/WORKFLOWS.md), [security policy](docs/SECURITY.md), and [attribution](ACKNOWLEDGEMENTS.md).
-
-## Development
-
-```bash
-python -m unittest discover -s tests -v
-python -m hybrid --help
-```
-
-Licensed under MIT. Contributions and testing are welcome.
+Licenciado sob [MIT](LICENSE) · **v0.8 experimental** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
