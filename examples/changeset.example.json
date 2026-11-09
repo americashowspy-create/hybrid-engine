@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "repo": "OWNER/REPOSITORY",
+  "base": "main",
+  "title": "docs: add a reviewed note",
+  "body": "Explain business purpose, review and verification plan.",
+  "changes": [
+    {
+      "path": "docs/example-note.md",
+      "expected_sha": null,
+      "content": "# Example\n\nReplace with approved content.\n"
+    }
+  ]
+}
