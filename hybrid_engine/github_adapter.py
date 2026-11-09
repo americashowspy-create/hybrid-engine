@@ -193,6 +193,8 @@ def validate_changeset(data: dict) -> dict:
         raise ValueError("change-set must be an object with schema_version: 1")
     repo = validate_repo(data.get("repo"))
     base = validate_ref(data.get("base", "main"))
+    if SHA.fullmatch(base):
+        raise ValueError("The PR base must be a branch, not a commit SHA")
     title = data.get("title")
     if not isinstance(title, str) or not 5 <= len(title) <= 160:
         raise ValueError("PR title must be 5-160 characters")
@@ -250,13 +252,23 @@ def propose_changes(client: GitHubClient, document: dict, *, apply: bool = False
         return preview
 
     base_commit = client.request("GET", prefix + "/git/commits/" + base_sha)
+    base_tree_sha = base_commit["tree"]["sha"]
+    existing_tree = client.request("GET", prefix + "/git/trees/" + base_tree_sha + "?recursive=1")
+    if existing_tree.get("truncated"):
+        raise GitHubError("GitHub truncated base tree; refusing to change file modes blindly.")
+    modes = {entry["path"]: entry["mode"] for entry in existing_tree.get("tree", [])
+             if entry.get("type") == "blob" and entry.get("mode") in ("100644", "100755")}
+    for item in change_set["changes"]:
+        if item["expected_sha"] is not None and item["path"] not in modes:
+            raise GitHubError("Unable to verify file mode: " + item["path"])
     entries = []
     for item in change_set["changes"]:
         blob = client.request("POST", prefix + "/git/blobs", {
             "content": base64.b64encode(item["content"].encode("utf-8")).decode("ascii"),
             "encoding": "base64",
         })
-        entries.append({"path": item["path"], "mode": "100644", "type": "blob", "sha": blob["sha"]})
+        entries.append({"path": item["path"], "mode": modes.get(item["path"], "100644"),
+                        "type": "blob", "sha": blob["sha"]})
     tree = client.request("POST", prefix + "/git/trees", {
         "base_tree": base_commit["tree"]["sha"], "tree": entries
     })
