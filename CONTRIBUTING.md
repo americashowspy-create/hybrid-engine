@@ -13,7 +13,7 @@ Se tiver permissão para criar uma Issue, utilize um título claro, por exemplo:
 
 Descreva:
 
-- **Ambiente:** ChatGPT com conexão GitHub / outro agente / CLI Python, com versões relevantes se disponíveis;
+- **Ambiente:** chat com ferramentas, agente de programação/IDE ou CLI; informe ferramentas, permissões e versões relevantes;
 - **Objetivo e comando enviado:** substitua dados sigilosos por placeholders;
 - **Resultado esperado vs. observado;**
 - **Evidências reais:** branch/PR/commit, mensagens de erro, nome dos testes executados e respectivos status;

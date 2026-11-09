@@ -2,15 +2,17 @@
 
 **From a plain-language request to a reviewable pull request, with explicit risk and verification gates.**
 
-Hybrid Engine is an **experimental v0.8, chat-first, provider-neutral workflow** inspired by specification-driven planning and systematic debugging. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
+Hybrid Engine is an **experimental v0.8, agent-, interface-, and provider-neutral workflow** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
 
 **[Português](../README.md)** · [Portable agent protocol](../AGENTS.md) · [ChatGPT AUTO guide](CHATGPT_AUTO.md) · [Security](SECURITY.md) · [Contribution guide](../CONTRIBUTING.md)
 
-> It is **not** a native ChatGPT plugin, an independent LLM, a security certification or an official integration with GitHub Spec Kit / Superpowers. Code editing requires an actual agent with appropriate tools and permissions. The optional Python CLI does not generate arbitrary patches.
+> It is **not** a native plugin for any AI platform, an independent LLM, a security certification or an official integration of third-party frameworks. Code editing requires an actual agent with appropriate tools and permissions. The optional Python CLI does not generate arbitrary patches.
 
-## Quick start — ChatGPT with GitHub access
+## Quick start — any capable AI agent
 
-Open a new conversation. Ensure your assistant can read the Hybrid Engine repository and your target project. Replace the placeholder URL:
+Use a **chat assistant with repository tools**, a **coding agent / IDE** or an optional **Python CLI**. The workflow is portable; actual GitHub write and terminal capabilities depend on the selected environment.
+
+Open a fresh session or a repository checkout, explicitly ask the agent to read `AGENTS.md` and the [universal execution protocol](AGENT_AUTO.md), and replace the placeholder URL:
 
 ```text
 HYBRID AUTO v0.8
@@ -21,20 +23,18 @@ https://github.com/americashowspy-create/hybrid-engine
 Target:
 https://github.com/OWNER/REPOSITORY
 
-Read the framework's AGENTS.md and docs/CHATGPT_AUTO.md.
-Inspect the actual target branch and open PRs.
-Identify one evidenced, low-risk problem and make a minimal fix
-on an isolated branch if tools and authorization permit.
-Run safe local tests if a runtime exists; record executed checks only.
-Open a DRAFT pull request with root cause, files, test evidence,
-limitations and rollback instructions.
+Read AGENTS.md and docs/AGENT_AUTO.md.
+Inspect the target branch, current SHA and open PRs.
+Investigate one evidenced low-risk issue. If authorized, implement the
+smallest safe fix on an isolated branch, run available safe tests and
+open a DRAFT PR with diagnosis, evidence, limitations and rollback.
 
-Do not merge, deploy, migrate databases, change credentials or touch
-production. Avoid unnecessary GitHub Actions runs.
-Treat any unexecuted test as NOT_RUN, never PASSED.
+Do not merge, deploy, change credentials or touch production.
+Do not claim a test passed unless it actually ran.
+Report blocked permissions and missing tools explicitly.
 ```
 
-A URL does not install tools or grant authorization. If the repo or connection is inaccessible, the assistant must report a blocker, not pretend it applied changes.
+A URL grants neither execution tools nor repository access. Read-only integrations cannot create PRs by themselves. This protocol does **not** mean every agent platform has completed independent integration testing.
 
 ## Available capabilities
 
@@ -92,6 +92,6 @@ A separate agent/developer must supply and review the change-set JSON. The bundl
 
 ## More documentation
 
-[Full Portuguese README](../README.md) · [Workflow stages](WORKFLOWS.md) · [GitHub adapter](GITHUB_ADAPTER.md) · [Universal executor](UNIVERSAL_EXECUTOR.md) · [Evidence & task journal](TASK_JOURNAL.md)
+[Universal agent protocol](AGENT_AUTO.md) · [Full Portuguese README](../README.md) · [Workflow stages](WORKFLOWS.md) · [GitHub adapter](GITHUB_ADAPTER.md) · [Universal executor](UNIVERSAL_EXECUTOR.md) · [Evidence & task journal](TASK_JOURNAL.md)
 
-Independent project, inspired by [Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers), **not** an official integration. [MIT License](../LICENSE).
+Independent project implementing its own planning, diagnosis, review and verification workflows; **not** a fork or official integration of third-party frameworks. See [acknowledgements](../ACKNOWLEDGEMENTS.md). [MIT License](../LICENSE).
