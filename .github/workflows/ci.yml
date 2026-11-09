@@ -1,0 +1,25 @@
+name: Hybrid Engine CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Test (stdlib)
+        run: python -m unittest discover -s tests -v
+      - name: CLI smoke test
+        run: |
+          python -m hybrid_engine --help
+          python -m hybrid_engine inspect --target .
