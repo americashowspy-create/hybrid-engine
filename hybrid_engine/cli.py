@@ -11,6 +11,8 @@ from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_a
 from .core import make_plan, route
 from .runner import run_tests
 from .store import hybrid_dir, initialize, read_state, write_json
+from .taskboard import list_tasks, note_task, start_task, task_status
+from .verification import verify_pr
 
 
 def markdown_report(report: dict, test: dict) -> str:
@@ -53,18 +55,49 @@ def main(argv: list[str] | None = None) -> int:
     gh_pr.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
     gh_pr.add_argument("--apply", action="store_true", help="Write an isolated branch and draft PR")
 
+    gh_verify = sub.add_parser("gh-verify", help="Verify real PR-head CI evidence")
+    gh_verify.add_argument("--repo", required=True, help="owner/name")
+    gh_verify.add_argument("--pr", required=True, type=int, help="PR number")
+
+    gh_task = sub.add_parser("gh-task", help="Durable task journal in GitHub Issues")
+    gh_task.add_argument("action", choices=("start", "list", "status", "note"))
+    gh_task.add_argument("--repo", required=True, help="owner/name")
+    gh_task.add_argument("--goal", help="Task objective for start")
+    gh_task.add_argument("--issue", type=int, help="Task issue number for status or note")
+    gh_task.add_argument("--state", choices=("in_progress", "blocked", "review_ready", "completed_reported"))
+    gh_task.add_argument("--summary", help="Progress summary for note")
+    gh_task.add_argument("--pr", type=int, help="Optional PR associated with note")
+    gh_task.add_argument("--apply", action="store_true", help="Explicitly allow start or note writes")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
                 output = remote_audit(client, args.repo, args.ref)
                 if args.output:
                     write_json(args.output.expanduser(), output)
-            else:
+            elif args.command == "gh-propose":
                 document = json.loads(args.manifest.read_text(encoding="utf-8"))
                 output = propose_changes(client, document, apply=args.apply)
+            elif args.command == "gh-verify":
+                output = verify_pr(client, args.repo, args.pr)
+            elif args.action == "start":
+                if not args.goal:
+                    raise ValueError("gh-task start requires --goal")
+                output = start_task(client, args.repo, args.goal, apply=args.apply)
+            elif args.action == "list":
+                output = list_tasks(client, args.repo)
+            elif args.action == "status":
+                if args.issue is None:
+                    raise ValueError("gh-task status requires --issue")
+                output = task_status(client, args.repo, args.issue)
+            else:
+                if args.issue is None or not args.state or not args.summary:
+                    raise ValueError("gh-task note requires --issue, --state and --summary")
+                output = note_task(client, args.repo, args.issue, args.state,
+                                   args.summary, pr_number=args.pr, apply=args.apply)
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0
         except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
