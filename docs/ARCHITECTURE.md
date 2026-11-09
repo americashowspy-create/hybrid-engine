@@ -30,3 +30,12 @@ with `--apply` create an isolated draft PR via the existing GitHub adapter.
 It rejects truncated audits, stale snapshots and unsafe file encodings.
 It does not silently install software, execute source, call an LLM or claim
 security fixes outside its specific rule.
+
+## Agent-neutral code handoff (v0.5)
+
+The `agent_bridge` module outputs bounded read-only repository findings,
+routing, task steps and source SHA in JSON. A capable connected AI agent prepares
+the actual source patch and tests. `gh-execute` rejects stale or mismatched
+manifests and, only with explicit opt-in, opens a draft PR through the GitHub
+adapter. No LLM API dependency, token in the chat, automatic merge, deploy or
+arbitrary shell execution is included.

@@ -8,6 +8,7 @@ from pathlib import Path
 from . import __version__
 from .audit import scan
 from .auto_executor import run_auto
+from .agent_bridge import prepare, submit
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
 from .core import make_plan, route
 from .runner import run_tests
@@ -76,9 +77,20 @@ def main(argv: list[str] | None = None) -> int:
     gh_auto.add_argument("--ref", help="Branch to audit (defaults to repo default)")
     gh_auto.add_argument("--apply", action="store_true", help="Opt in to a limited safe fix via draft PR")
 
+    gh_order = sub.add_parser("gh-workorder", help="Prepare a SHA-pinned AI-agent work order")
+    gh_order.add_argument("--repo", required=True, help="owner/name")
+    gh_order.add_argument("--goal", required=True, help="Task description")
+    gh_order.add_argument("--ref", help="Base branch (defaults to repo default)")
+    gh_order.add_argument("--output", type=Path, help="Optional JSON file output")
+
+    gh_exec = sub.add_parser("gh-execute", help="Preview an agent patch or create a draft PR")
+    gh_exec.add_argument("--order", required=True, type=Path, help="JSON work-order")
+    gh_exec.add_argument("--manifest", required=True, type=Path, help="Reviewed JSON change-set")
+    gh_exec.add_argument("--apply", action="store_true", help="Opt in to draft PR creation")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -92,6 +104,14 @@ def main(argv: list[str] | None = None) -> int:
                 output = verify_pr(client, args.repo, args.pr)
             elif args.command == "gh-auto":
                 output = run_auto(client, args.repo, args.intent, ref=args.ref, apply=args.apply)
+            elif args.command == "gh-workorder":
+                output = prepare(client, args.repo, args.goal, ref=args.ref)
+                if args.output:
+                    write_json(args.output.expanduser(), output)
+            elif args.command == "gh-execute":
+                order = json.loads(args.order.read_text(encoding="utf-8"))
+                manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+                output = submit(client, order, manifest, apply=args.apply)
             elif args.action == "start":
                 if not args.goal:
                     raise ValueError("gh-task start requires --goal")
