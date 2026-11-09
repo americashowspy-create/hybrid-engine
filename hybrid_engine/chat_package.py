@@ -62,3 +62,20 @@ def export_chat_package(client: GitHubClient, repo: str, goal: str,
         "notice": "Output contains private source. Do not commit, paste into logs, or send to an unapproved provider.",
         "next": "Have an authorized agent author a reviewed manifest; preview with gh-execute; draft PR only with --apply.",
     }
+
+
+def work_order_from_bundle(bundle: dict) -> dict:
+    """Recover an audited order from a chat package without trusting fake scopes."""
+    if not isinstance(bundle, dict) or bundle.get("protocol") != "hybrid.agent-stdio.v1":
+        raise ValueError("Unsupported chat package protocol")
+    order, sources = bundle.get("work_order"), bundle.get("sources")
+    if not isinstance(order, dict) or not isinstance(sources, list) or not sources:
+        raise ValueError("Malformed chat package")
+    scope = order.get("scope")
+    paths = scope.get("paths") if isinstance(scope, dict) else None
+    if (not isinstance(paths, list) or len(paths) != len(sources)
+            or not all(isinstance(item, dict) and isinstance(item.get("path"), str)
+                       for item in sources)
+            or set(paths) != {item["path"] for item in sources}):
+        raise ValueError("Chat package source files differ from the audited scope")
+    return order
