@@ -78,12 +78,12 @@ def changeset(expected=BLOB):
 
 class InputValidationTests(unittest.TestCase):
     def test_paths(self):
-        for path in ("../secrets", "/etc/passwd", "a/../../b", "a\\evil", "a//b", ".git/config"):
+        for path in ("../secrets", "/etc/passwd", "a/../../b", "a\\evil", "a//b", ".git/config", "bad\npath"):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 safe_repo_path(path)
 
     def test_sensitive_paths(self):
-        for path in (".github/workflows/ci.yml", ".env", "src/.env.production",
+        for path in (".github/workflows/ci.yml", ".github/CODEOWNERS", ".env", "src/.env.production",
                      "supabase/migrations/01.sql", "keys/server.pem"):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 validate_change_path(path)
