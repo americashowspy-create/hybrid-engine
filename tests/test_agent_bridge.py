@@ -9,8 +9,10 @@ BLOB = "c" * 40
 
 
 def audit(**extra):
-    return dict(source_sha=SHA, files_scanned=5, findings=[], truncated=False,
-                files_skipped=0, files_unavailable=0, limitations=[], **extra)
+    result = dict(source_sha=SHA, files_scanned=5, findings=[], truncated=False,
+                  files_skipped=0, files_unavailable=0, limitations=[])
+    result.update(extra)
+    return result
 
 
 def make_order(goal="HYBRID DEBUG: bug"):

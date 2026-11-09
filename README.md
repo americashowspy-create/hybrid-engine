@@ -2,7 +2,7 @@
 
 **Chat-first, agent-agnostic development orchestration** combining spec-driven planning, systematic debugging, security checks, quality gates, and persistent progress.
 
-> **Status: v0.4 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
+> **Status: v0.5 experimental / partial automation.** This is an independent orchestration layer inspired by [GitHub Spec Kit](https://github.com/github/spec-kit) and [Superpowers](https://github.com/obra/superpowers). It is **not** a fork or an official integration, and does not bundle either project's source code.
 
 ## In one minute
 
@@ -47,6 +47,27 @@ hybrid gh-propose --manifest reviewed-changeset.json --apply     # branch + DRAF
 See [GitHub adapter guide](docs/GITHUB_ADAPTER.md). The ChatGPT connector can use its own GitHub tools instead, without invoking this CLI or providing a token in conversation.
 
 **This still does not automatically generate code fixes.** An authorized agent or developer must prepare and review each change-set; CI and runtime verification remain separate.
+
+## AI-agent work orders (v0.5)
+
+A CLI or ChatGPT agent can prepare a **commit-pinned work order**,
+investigate source, create a reviewed change-set and submit it via an evidence gate.
+**Codex is optional; no model API is bundled or required.**
+
+```bash
+hybrid gh-workorder --repo OWNER/REPO --goal "HYBRID DEBUG: corrigir bug" --output order.json
+# Have an authorized coding agent inspect source and author a reviewed change-set:
+hybrid gh-execute --order order.json --manifest reviewed-change.json          # PREVIEW
+hybrid gh-execute --order order.json --manifest reviewed-change.json --apply  # draft PR
+hybrid gh-verify --repo OWNER/REPO --pr 123
+```
+
+The JSON change-set must contain `expected_base_sha` matching the work order
+and the actual Git blob SHA for each existing file. A changed branch or file
+invalidates the proposal. None of these commands automatically generates
+arbitrary fixes or tests the running application. ChatGPT can perform equivalent
+operations through its connected GitHub tools instead of this CLI.
+See [Agent handoff guide](docs/AGENT_HANDOFF.md).
 
 ## Guarded automatic execution (v0.4)
 
