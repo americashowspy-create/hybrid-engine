@@ -9,6 +9,7 @@ from uuid import uuid4
 
 FLOWS: dict[str, tuple[str, ...]] = {
     "audit": ("inventory", "security_scan", "triage", "report"),
+    "db-audit": ("inventory", "db_static_scan", "db_risk_triage", "limitations", "report"),
     "audit-fix": ("inventory", "reproduce", "security_scan", "regression_test", "isolated_fix", "verify", "pull_request"),
     "debug": ("reproduce", "root_cause", "regression_test", "minimal_fix", "verify"),
     "build": ("specification", "acceptance_criteria", "architecture", "implementation", "tests", "review"),
@@ -26,7 +27,7 @@ def normalize(value: str) -> str:
 def route(intent: str) -> str:
     """Select one workflow. Explicit command tokens take precedence."""
     s = normalize(intent)
-    explicit = re.search(r"\bhybrid\s+(audit-fix|audit|debug|build|review|status|auto)\b", s)
+    explicit = re.search(r"\bhybrid\s+(db-audit|audit-fix|audit|debug|build|review|status|auto)\b", s)
     if explicit and explicit.group(1) != "auto":
         return explicit.group(1)
     if re.search(r"\b(status|progresso|pendencias|retomar)\b", s):

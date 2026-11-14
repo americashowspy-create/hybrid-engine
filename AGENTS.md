@@ -46,6 +46,17 @@ Output contains private source; never paste it to logs or public issues.
 `hybrid gh-execute --bundle /tmp/chat.json --manifest /tmp/change.json`
 is a read-only preview; only explicit `--apply` opens a draft PR, no merge.
 
+## HYBRID DB-AUDIT — optional offline database risk review
+
+When a task concerns database risk, read [docs/DB_GUARD.md](docs/DB_GUARD.md).
+For local projects, `hybrid db-audit --target PATH` inspects bounded source files
+without opening a database connection, executing project code or running SQL.
+The regular local `hybrid run` workflow can include DB Guard findings when
+it detects database-related files. The result is heuristic evidence, **not**
+verification of effective RLS/GRANT permissions, successful backup restoration,
+real costs or query performance. Never access live databases or apply migrations
+without separate explicit authorization.
+
 ## Chat-only fallback
 
 If there is no shell/CI executor, use accessible GitHub connector actions for source inspection, branch commits and PRs, and mark runtime tests NOT_TESTED. If there is no repository write access, produce a patch and instructions rather than falsely claiming an update.

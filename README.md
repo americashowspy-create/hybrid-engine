@@ -111,6 +111,12 @@ Não dispare verificações hospedadas desnecessariamente.
 
 Todos são **instruções portáteis de workflow**, não comandos nativos garantidos em uma plataforma específica.
 
+## 🗄️ DB Guard — proposta experimental para v0.9
+
+O módulo opcional **DB Guard** amplia o protocolo com uma auditoria estática e offline de riscos de banco de dados, sem credenciais nem conexão com produção. Detecta indícios de políticas inseguras, variáveis privilegiadas públicas, tipos monetários imprecisos e migrations destrutivas. **Não valida RLS efetivo, backups, custos reais ou desempenho do banco.**
+
+Na branch de desenvolvimento da v0.9, o comando previsto é `hybrid db-audit --target /caminho/do/projeto`. O fluxo `hybrid run` anexa a análise quando identificar uso de banco de dados. [Documentação e limites](docs/DB_GUARD.md).
+
 ## 💻 Uso opcional pelo terminal
 
 A CLI é feita em Python, usa apenas a biblioteca padrão em tempo de execução e não requer assinatura de modelo. Na raiz de um clone do repositório:
