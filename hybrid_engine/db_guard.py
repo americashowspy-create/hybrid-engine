@@ -14,6 +14,7 @@ SCAN_EXT = frozenset({".py", ".js", ".jsx", ".ts", ".tsx", ".sql", ".prisma", ".
 CONFIG_NAMES = frozenset({"requirements.txt", "alembic.ini", "database.yml", "firestore.rules", "pyproject.toml", "package.json"})
 MAX_FILES = 250
 MAX_BYTES = 256 * 1024
+MAX_FINDINGS = 500
 
 PUBLIC_PRIVILEGED = re.compile(
     r"\b(?:VITE_|NEXT_PUBLIC_|EXPO_PUBLIC_)[A-Z0-9_]*(?:SERVICE_ROLE|DATABASE_URL|DB_PASSWORD|PRIVATE_KEY|SECRET_KEY)[A-Z0-9_]*\b",
@@ -76,6 +77,7 @@ def scan_database(root: Path) -> dict:
     signals = set()
     scanned = skipped = 0
     truncated = False
+    findings_truncated = False
     for current, dirs, files in os.walk(root, followlinks=False):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
         for name in sorted(files):
@@ -112,6 +114,10 @@ def scan_database(root: Path) -> dict:
                 code = line.split("--", 1)[0] if sql else line
 
                 def add(rule: str, category: str, severity: str, message: str):
+                    nonlocal findings_truncated
+                    if len(findings) >= MAX_FINDINGS:
+                        findings_truncated = True
+                        return
                     findings.append({
                         "rule": rule, "category": category, "severity": severity,
                         "confidence": "suspected", "path": rel, "line": line_number,
@@ -132,33 +138,39 @@ def scan_database(root: Path) -> dict:
                     add("DESTRUCTIVE_MIGRATION", "migrations", "high", "Migration contains potentially destructive SQL; require backup, rollback review and explicit approval.")
                 if sql:
                     match = HIGH_OFFSET.search(code)
-                    if match and int(match.group(1)) >= 500:
+                    offset = (match.group(1).lstrip("0") or "0") if match else "0"
+                    if len(offset) > 3 or (len(offset) == 3 and offset >= "500"):
                         add("HIGH_OFFSET", "performance", "low", "Large fixed OFFSET may degrade pagination; confirm query usage and consider cursor pagination.")
             if sql:
                 # Policy clauses are often split across lines; strip SQL line comments.
                 uncommented = "\n".join(line.split("--", 1)[0] for line in content.splitlines())
                 for match in OPEN_POLICY.finditer(uncommented):
+                    if len(findings) >= MAX_FINDINGS:
+                        findings_truncated = True
+                        break
                     findings.append({
                         "rule": "PERMISSIVE_SQL_POLICY", "category": "security", "severity": "high",
                         "confidence": "suspected", "path": rel,
                         "line": uncommented.count("\n", 0, match.start()) + 1,
                         "message": "SQL policy appears to allow all rows for a policy operation; review roles, GRANTs and intended access.",
                     })
-        if truncated:
+            if findings_truncated:
+                break
+        if truncated or findings_truncated:
             break
     priority = {area: pos for pos, area in enumerate(CATEGORIES)}
     findings.sort(key=lambda item: (priority[item["category"]], item["path"], item["line"], item["rule"]))
     return {
         "schema_version": 1, "mode": "static_read_only",
-        "status": "INCOMPLETE" if truncated or skipped else "DETECTED" if signals or findings else "NO_DATABASE_EVIDENCE",
+        "status": "INCOMPLETE" if truncated or skipped or findings_truncated else "DETECTED" if signals or findings else "NO_DATABASE_EVIDENCE",
         "database_signals": sorted(signals), "files_scanned": scanned,
-        "files_skipped": skipped, "truncated": truncated, "findings": findings,
+        "files_skipped": skipped, "truncated": truncated, "findings_truncated": findings_truncated, "findings": findings,
         "verification": {category: {"status": "NOT_VERIFIED", "reason": VERIFY_LIVE[category]} for category in CATEGORIES},
         "limitations": [
             "Static heuristic signals are not confirmed vulnerabilities or a complete database audit.",
             "No connection, SQL, network probes, application code, or existing test scripts were executed.",
             "No live .env files, secrets, query results, or matched source excerpts appear in this report.",
             "Missing findings do not prove RLS, backups, costs, atomicity, schema or performance are safe.",
-            f"At most {MAX_FILES} candidate files and {MAX_BYTES} bytes per file are inspected.",
+            f"At most {MAX_FILES} candidate files, {MAX_BYTES} bytes per file and {MAX_FINDINGS} findings are collected.",
         ],
     }

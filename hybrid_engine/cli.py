@@ -241,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
                 "audit": audit, "tests": tests,
                 "status": "needs_agent_execution" if plan["flow"] in ("build", "audit-fix", "debug", "review") else "reported",
             }
-            if db_guard["database_signals"] or db_guard["findings"] or db_guard["status"] == "INCOMPLETE" or plan["flow"] == "db-audit":
+            if db_guard["database_signals"] or db_guard["findings"] or plan["flow"] == "db-audit":
                 report["db_guard"] = db_guard
             report_path = write_json(paths / "reports" / (plan["id"] + ".json"), report)
             markdown_path = paths / "reports" / (plan["id"] + ".md")

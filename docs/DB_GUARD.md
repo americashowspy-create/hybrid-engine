@@ -30,7 +30,7 @@ Os achados são **suspeitas** para triagem humana, não falhas confirmadas. A se
 ## Segurança operacional
 
 - Ignora diretórios de dependências/artefatos, links simbólicos, binários, arquivos grandes e arquivos .env reais; examina apenas nomes de variáveis em templates de ambiente.
-- Até 250 arquivos candidatos e 256 KiB por arquivo. Limites ou arquivos ignorados resultam em INCOMPLETE, não em aprovação.
+- Até 250 arquivos candidatos, 256 KiB por arquivo e 500 achados. Limites ou arquivos ignorados resultam em INCOMPLETE, não em aprovação.
 - Relatórios incluem caminho, linha, regra e mensagem, **nunca o valor correspondente** nem trecho do código.
 - NÃO acessa banco em produção, NÃO executa EXPLAIN ANALYZE, NÃO testa restaurar backup, NÃO roda migrations.
 - Por design, o módulo não determina política RLS efetiva, se existe backup ou quanto o projeto custa.

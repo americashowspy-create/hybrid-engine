@@ -113,5 +113,17 @@ class DatabaseGuardTests(unittest.TestCase):
         self.assertEqual(route("HYBRID AUTO"), "audit")
 
 
+    def test_limited_findings_and_very_large_offset(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "load.sql").write_text(
+                "SELECT 1 OFFSET " + "9" * 10000 + ";\n" + "SELECT 1 OFFSET 500;\n" * 700
+            )
+            result = scan_database(root)
+            self.assertTrue(result["findings_truncated"])
+            self.assertEqual(len(result["findings"]), 500)
+            self.assertEqual(result["status"], "INCOMPLETE")
+
+
 if __name__ == "__main__":
     unittest.main()
