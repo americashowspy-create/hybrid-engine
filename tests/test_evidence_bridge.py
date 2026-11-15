@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from hybrid_engine.evidence_bridge import import_evidence, evidence_markdown
-from hybrid_engine.advisor import advise
+from hybrid_engine.advisor import advise, load_assessment
 from hybrid_engine.cli import main
 
 SHA = 'a' * 40
@@ -230,3 +230,31 @@ class EvidenceBridgeTests(unittest.TestCase):
         self.assertEqual(len(work['work_orders']), 2)
         self.assertEqual({o['evidence']['provenance'][0]['external_rule'] for o in work['work_orders']},
                          {'fixture/eval', 'different-rule'})
+
+    def test_symlinked_report_parent_alias_is_allowed_but_report_leaf_is_not(self):
+        # macOS /tmp is a symlink to /private/tmp. Only an explicitly chosen
+        # report parent may be canonicalized; the final file must not be linked.
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            canonical = base / 'canonical'
+            canonical.mkdir()
+            alias = base / 'tmp-alias'
+            alias.symlink_to(canonical, target_is_directory=True)
+
+            original = canonical / 'native.json'
+            original.write_text(json.dumps(native()))
+            imported = import_evidence([alias / 'native.json'])
+            self.assertEqual(len(imported['findings']), 1)
+
+            output = canonical / 'consolidated.json'
+            output.write_text(json.dumps(imported))
+            advice = advise(load_assessment(alias / 'consolidated.json'))
+            self.assertEqual(advice['status'], 'BLOCKED')
+            self.assertEqual(len(advice['work_orders']), 1)
+
+            linked_file = canonical / 'linked-report.json'
+            linked_file.symlink_to(original)
+            with self.assertRaises(OSError):
+                import_evidence([alias / 'linked-report.json'])
+            with self.assertRaises(OSError):
+                load_assessment(alias / 'linked-report.json')
