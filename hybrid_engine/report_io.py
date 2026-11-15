@@ -7,9 +7,22 @@ from .source_io import read_source
 
 MAX_REPORT_BYTES = 8 * 1024 * 1024
 
+
+def load_report_bytes(path: Path, limit: int = MAX_REPORT_BYTES) -> bytes:
+    """Read a report through a canonical trusted parent, not a symlinked file.
+
+    macOS exposes /tmp as a symlink to /private/tmp. The caller explicitly
+    selects a report's parent directory, so resolve that boundary first; keep
+    the report filename as a no-follow leaf via read_source. Source scanning
+    still rejects symlinks below its own separately trusted project root.
+    """
+    path = Path(path).expanduser().absolute()
+    root = path.parent.resolve(strict=True)
+    return read_source(root, path.name, limit)
+
+
 def load_json_report(path: Path) -> dict:
-    path = path.expanduser().absolute()
-    return parse_json_bytes(read_source(path.parent, path.name, MAX_REPORT_BYTES))
+    return parse_json_bytes(load_report_bytes(path))
 
 
 def parse_json_bytes(raw: bytes) -> dict:
