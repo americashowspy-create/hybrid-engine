@@ -123,6 +123,14 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         # Copy only structural evidence. Never forward supplied messages or advice.
         normalized = {k: item[k] for k in ('id', 'rule', 'severity', 'confidence', 'source',
                                           'category', 'context', 'path', 'line')}
+        metrics = item.get('metrics', {})
+        if not isinstance(metrics, dict) or any(
+                key not in {'definitions', 'branch_points', 'local_dependencies', 'component_files'}
+                or type(value) is not int or not 0 <= value <= 1000000
+                for key, value in metrics.items()):
+            raise ValueError('Invalid structural metrics')
+        if metrics:
+            normalized['metrics'] = metrics
         related = item.get('related_paths', [])
         if not isinstance(related, list) or len(related) > 20:
             raise ValueError('Invalid related paths')
@@ -142,7 +150,7 @@ def _validate(report: dict) -> tuple[list[dict], str]:
     incomplete = (report['status'] == 'INCOMPLETE' or coverage['status'] == 'INCOMPLETE'
                   or any(coverage.get(k) for k in ('truncated', 'db_findings_truncated',
                       'general_files_skipped', 'architecture_files_skipped',
-                      'inventory_files_skipped', 'db_files_skipped')))
+                      'inventory_files_skipped', 'db_files_skipped', 'structure_files_incomplete')))
     return sorted(seen.values(), key=lambda f: (SEVERITY_ORDER[f['severity']], f['path'],
                                                 f['line'], f['rule'], f['id'])), ('INCOMPLETE' if incomplete else 'BOUNDED_COMPLETE')
 

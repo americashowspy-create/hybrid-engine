@@ -1,0 +1,116 @@
+"""Source-only graph evidence, malformed syntax and bounded structural analysis."""
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from hybrid_engine.structure import analyze_structure
+from hybrid_engine.assessment import assess_project
+from hybrid_engine.advisor import advise
+
+
+class StructureTests(unittest.TestCase):
+    def test_python_cycle_detected_and_advised_with_existing_flow(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('import b\n')
+            (root / 'b.py').write_text('from a import function\n')
+            report = assess_project(root)
+            cycle = next(f for f in report['findings'] if f['rule'] == 'LOCAL_IMPORT_CYCLE')
+            self.assertEqual(cycle['related_paths'], ['b.py'])
+            self.assertEqual(cycle['metrics']['component_files'], 2)
+            self.assertEqual(cycle['confidence'], 'suspected')
+            order = next(o for o in advise(report)['work_orders'] if o['finding_id'] == cycle['id'])
+            self.assertEqual(order['workflow']['flow'], 'review')
+            self.assertIn('confirm runtime relevance', order['strategy'])
+            self.assertEqual(order['evidence']['metrics'], cycle['metrics'])
+
+    def test_relative_package_imports_resolve(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'pkg').mkdir()
+            (root / 'pkg' / '__init__.py').write_text('')
+            (root / 'pkg' / 'a.py').write_text('from . import b\n')
+            (root / 'pkg' / 'b.py').write_text('from .a import function\n')
+            result = analyze_structure(root, ['pkg/a.py', 'pkg/b.py', 'pkg/__init__.py'])
+            self.assertTrue(any(i['rule'] == 'LOCAL_IMPORT_CYCLE' for i in result['issues']))
+
+    def test_no_execution_and_acyclic_chain(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('import b\nraise RuntimeError("must not execute")')
+            (root / 'b.py').write_text('value = 1')
+            result = analyze_structure(root, ['a.py', 'b.py'])
+            self.assertEqual(len(result['edges']), 1)
+            self.assertEqual(result['issues'], [])
+
+    def test_js_comments_strings_templates_and_dynamic_imports_excluded(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.ts').write_text('''
+/* import b from './b'; */
+const text = "import b from './b'";
+const template = `
+import b from './b';
+`;
+import('./b');
+''')
+            (root / 'b.ts').write_text("import a from './a';")
+            result = analyze_structure(root, ['a.ts', 'b.ts'])
+            self.assertEqual(result['edges'], [{'source': 'b.ts', 'target': 'a.ts', 'line': 1}])
+
+    def test_js_cycle_and_typescript_js_output_reference(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.ts').write_text("import {b} from './b.js';")
+            (root / 'b.ts').write_text("export {a} from './a';")
+            result = analyze_structure(root, ['a.ts', 'b.ts'])
+            self.assertEqual(len(result['edges']), 2)
+            self.assertEqual(result['issues'][0]['rule'], 'LOCAL_IMPORT_CYCLE')
+            self.assertTrue(all(f['method'] == 'js_lexical_subset' for f in result['files']))
+
+    def test_many_imports_are_review_evidence_not_bad_architecture(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for n in range(10):
+                (root / f'm{n}.py').write_text('value=1')
+            (root / 'app.py').write_text('\n'.join(f'import m{n}' for n in range(10)))
+            result = assess_project(root)
+            finding = next(f for f in result['findings'] if f['rule'] == 'HIGH_LOCAL_FAN_OUT')
+            self.assertEqual(finding['metrics']['local_dependencies'], 10)
+            order = next(o for o in advise(result)['work_orders'] if o['finding_id'] == finding['id'])
+            self.assertIn('intentional composition root', order['strategy'])
+
+    def test_control_flow_counts_without_claiming_business_responsibilities(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'app.py').write_text('\n'.join(
+                f'def f{n}(x):\n' + '    if x: pass\n' * 6 for n in range(5)))
+            result = analyze_structure(root, ['app.py'])
+            self.assertEqual(result['issues'][0]['metrics'], {'definitions': 5, 'branch_points': 30})
+
+    def test_invalid_python_and_node_budget_report_incomplete(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'broken.py').write_text('def invalid(')
+            self.assertEqual(assess_project(root)['status'], 'INCOMPLETE')
+            (root / 'broken.py').write_text('x=1')
+            with patch('hybrid_engine.structure.MAX_NODES', 1):
+                result = assess_project(root)
+            self.assertEqual(result['status'], 'INCOMPLETE')
+            self.assertEqual(result['structure']['incomplete'][0]['reason'], 'parse_or_node_limit')
+            self.assertEqual(advise(result)['status'], 'BLOCKED')
+
+    def test_bounded_size_edges_and_determinism(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('import b\n')
+            (root / 'b.py').write_text('import a\n')
+            result = analyze_structure(root, ['a.py', 'b.py'])
+            self.assertEqual(result, analyze_structure(root, ['b.py', 'a.py']))
+            with patch('hybrid_engine.structure.MAX_EDGES', 1):
+                limited = analyze_structure(root, ['a.py', 'b.py'])
+            self.assertTrue(limited['incomplete'])
+            self.assertEqual(len(limited['edges']), 1)
+            with patch('hybrid_engine.structure.MAX_SOURCE_BYTES', 1):
+                self.assertEqual(len(analyze_structure(root, ['a.py', 'b.py'])['incomplete']), 2)

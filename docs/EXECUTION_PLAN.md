@@ -110,3 +110,13 @@ Falhas e arquivos especiais tornam cobertura incompleta; symlinks e diretórios
 ignorados são exclusões intencionais contabilizadas. Suíte: 188 PASS em 3.11/3.12.
 Próximos ciclos: B estrutura/imports; C package managers/workspaces; D bridge offline;
 E medições e redução de releituras quando justificadas.
+
+Fase B: camada estrutural funcional (`structure.py`) usa AST Python padrão e um
+subconjunto lexical de imports/export de JS/TS, sem executar módulos. Grafo de
+arquivos locais, fan-in/out, componentes fortemente conectados e contagens de
+controle/definições alimentam findings e Advisor existentes. Limites: 128 KiB por
+fonte, 50000 nós AST globais e 2000 arestas; falhas/limites => INCOMPLETE.
+Sem inferir responsabilidades de negócio a partir de nomes ou afirmar arquitetura
+ruim por contagens. JS dinâmico, aliases de bundler e layout src Python não resolvidos.
+Primeira validação: 197 testes PASS; piloto Hybrid adicionou 4 indicadores de
+controle concentrado e 1 fan-out; Radar manteve os 12 achados. Análises são pistas.

@@ -8,6 +8,7 @@ from pathlib import Path
 from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
 from .source_io import read_source
+from .structure import analyze_structure
 from .enumeration import Enumeration, enumerate_tree
 
 MAX_FILES = 250
@@ -21,6 +22,18 @@ LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml",
              "yarn.lock", "bun.lock", "bun.lockb")
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 GUIDANCE = {
+    "LOCAL_IMPORT_CYCLE": (
+        "Observed local import references form a strongly connected component.",
+        "Review the cited component and dependency directions; confirm runtime relevance before proposing a small interface extraction.",
+        "Relevant imports and tests succeed; document whether the cycle is intentional or removed."),
+    "HIGH_LOCAL_FAN_OUT": (
+        "The module references at least ten locally resolved source dependencies.",
+        "Inspect whether this is an intentional composition root or concentrated coordination; preserve interfaces and compare change cost.",
+        "Document the dependency role and preserve import and behavior tests."),
+    "CONCENTRATED_CONTROL_FLOW": (
+        "Python AST observed at least thirty branch points across at least five definitions.",
+        "Review the measured control flow and definition boundaries; select one independently testable behavior if extraction is justified.",
+        "Branch-specific regression tests preserve behavior; any extraction has an explicit benefit."),
     "REACT_HTML_INJECTION": (
         "A React HTML rendering sink was observed; exploitability is not established.",
         "Trace the HTML source, interpolation and sanitizer. Static trusted HTML may need no change; "
@@ -204,6 +217,13 @@ def assess_project(target: Path) -> dict:
                  item["path"], item["line"], item["message"])
         for item in database["findings"])
     findings.extend(architecture)
+    structure = analyze_structure(root, candidates)
+    for issue in structure['issues']:
+        finding = _finding('architecture', issue['rule'], 'low', 'architecture',
+                           issue['path'], issue['line'], GUIDANCE[issue['rule']][0])
+        finding['related_paths'] = issue['related_paths']
+        finding['metrics'] = issue['metrics']
+        findings.append(finding)
     findings.sort(key=lambda x: (SEVERITY_ORDER.get(x["severity"], 9),
                                  x["context"] == "test_source",
                                  x["category"], x["path"], x["line"], x["rule"], x["id"]))
@@ -227,7 +247,7 @@ def assess_project(target: Path) -> dict:
             "status": "PROPOSED_NOT_APPLIED",
         })
 
-    incomplete = (truncated or skipped > 0 or arch_skipped > 0 or
+    incomplete = (bool(structure['incomplete']) or truncated or skipped > 0 or arch_skipped > 0 or
                   general["truncated"] or general["files_skipped"] > 0 or
                   database["status"] == "INCOMPLETE")
     status = "INCOMPLETE" if incomplete else "REVIEW_REQUIRED" if findings else "NO_FINDINGS"
@@ -239,6 +259,7 @@ def assess_project(target: Path) -> dict:
             "candidate_files": len(candidates), "general_files_scanned": general["files_scanned"],
             "general_files_skipped": general["files_skipped"],
             "architecture_files_skipped": arch_skipped,
+            "structure_files_incomplete": len(structure["incomplete"]),
             "generated_types_excluded_from_size_rule": generated_size_excluded,
             "inventory_files_skipped": skipped, "sensitive_env_files_excluded": ignored_sensitive,
             "db_files_scanned": database["files_scanned"],
@@ -246,7 +267,7 @@ def assess_project(target: Path) -> dict:
             "truncated": truncated or general["truncated"] or database["truncated"],
             "db_findings_truncated": database["findings_truncated"],
         },
-        "database_signals": database["database_signals"],
+        "database_signals": database["database_signals"], "structure": structure,
         "summary": {
             "application_source_findings": sum(
                 x["context"] == "application_source" for x in findings),
