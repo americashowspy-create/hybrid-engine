@@ -1,3 +1,122 @@
+# Revisão final de integração pré-PR
+
+## Resultado atual: READY_WITH_CAVEATS
+
+Revisão da branch `feat/assessment-advisor-hardening`, base
+`8ee128518a766aac64c13f4e039028a01cf5ba10`. Checkout encontrado em da37c57 e atualizado
+por fast-forward, sem descartar trabalho. Branch remota continha as correções
+macOS /tmp e o teste 230; todas preservadas.
+
+Foram relidos assessment, Advisor, enumeração, source_io/report_io, estrutura,
+pacotes, scanners e CLI, e comparados os contratos alterados em relação à main.
+Nenhum módulo grande, executor, scanner externo ou dependência nova introduzido.
+API GitHub confirmou private=true e visibility=private; visibilidade não alterada.
+
+## Problemas reproduzidos e corrigidos
+
+| Evidência anterior | Correção e regressão |
+| --- | --- |
+| packages/* incluía packages/a/deep, herdando lockfile indevido | Matcher por segmento; * e ? não atravessam /; ** inteiro aceita zero/múltiplos níveis; proprietário mais próximo preservado |
+| Braces/classes/extglobs e segmentos inválidos eram tratados como padrões confiáveis | Subconjunto explícito; padrão não suportado torna assessment INCOMPLETE |
+| Arquivo regular enumerado e substituído por symlink sumia sem files_skipped | Falha contabilizada em inventário/audit/DB Guard; nenhuma leitura do alvo do link |
+| Nome POSIX com byte FF fazia o assessment falhar ao gerar ID UTF-8 | Enumeração registra falha e cobertura incompleta, sem publicar nome malformado |
+| Caminho relativo acima de 1024 caracteres era emitido por assess mas rejeitado por advise | Enumeração e leitor usam o mesmo limite; cobertura incompleta em vez de relatório incompatível |
+| import pkg preferia pkg.py quando existia pkg/__init__.py | Prioridade de package compatível com resolução Python padrão |
+| Resolver escolhia arbitrariamente entre module.js e module.ts | Ambiguidade registrada em unresolved_imports; não produz aresta/ciclo presumido |
+| Import relativo sem package conhecido produzia aresta local | Registro de limite, sem adivinhar raiz de importação |
+| Mesmo caminho/regra sem SHA em arquivos distintos era deduplicado | Isolamento por digest/run; repository opcional separa namespaces declarados |
+| Advisor aceitava source audit ou confidence confirmed_from_source em finding externo contraditório | Rejeição da inconsistência; nenhuma promoção automática e revisão independente obrigatória |
+| Erro de enumeração aninhado com resumo completo não bloqueava Advisor | Falhas aninhadas consideradas, mesmo com resumo inconsistente |
+| Cerca de 100 KiB de entrada geravam mais de 10 MiB de escopos repetidos | Orçamento de expansão + 2000 caminhos globais + saída JSON limitada a 8 MiB |
+
+Reproduções falharam antes das respectivas correções. Fixtures e testes de cada
+caso são versionados; logs locais ficam em work/evidence/prepr-*. Não são
+alegações de exploração remota nem verificações de segurança de produção.
+
+## Validação executada
+
+| Gate | Evidência |
+| --- | --- |
+| Baseline 8ee1285, Python 3.11.18 e 3.12.14 | 230/230 PASS |
+| Suíte final, Python 3.11.18 e 3.12.14 | 251/251 PASS, +21 testes, zero falhas |
+| Main d32f251 isolada, Python 3.11 | 135/135 PASS; testes legados também presentes na suíte final |
+| compileall hybrid_engine tests, ambas versões | PASS |
+| git diff --check | PASS |
+| Smoke block exato preparado no ci.yml, ambas versões | PASS local, incluindo assess, advise e evidence-import → advise |
+| /tmp macOS simulado com pai symlink e leaf symlink | Regressão existente PASS, pai canônico aceito e arquivo-link rejeitado |
+| ID de evidência antiga com SHA conhecido/sem repository | Igual ao gerado pela base 8ee1285 |
+| GitHub Actions | NOT_RUN / CI_NOT_VERIFIED |
+
+Os smokes foram executados por shell local, extraindo somente o bloco CLI; o
+passo remoto main-only NÃO foi executado. Não há nova execução em macOS real;
+o resultado do mantenedor não substitui homologação desta revisão no Mac.
+
+## Pilotos e ressalva de cobertura
+
+| Comparação | Achados antes/depois | Cobertura final |
+| --- | --- | --- |
+| Scanner 8ee1285 e atual sobre a mesma árvore ampliada do Hybrid | 12 / 12 | INCOMPLETE em ambos |
+| Scanner 8ee1285 e atual sobre o Radar imutável | 12 / 12 | BOUNDED_COMPLETE |
+
+Hybrid preserva os sete indicadores de possíveis credenciais em testes e os cinco
+indicadores arquiteturais (quatro controle concentrado e um fan-out). Radar
+preserva seis suspeitas SQL, um lockfile, um sink HTML, três fontes longas e um
+indicador de testes ausentes. Nenhum achado foi suprimido para melhorar contagens.
+Radar HEAD 68c0069b0008e4829ce06011acdd91190057b839, working tree limpa antes/depois.
+Sem alterações no Radar ou acesso ao Supabase.
+
+A árvore original 8ee1285 somava 49398 nós AST e era BOUNDED_COMPLETE. Os novos
+testes levam a árvore completa além do limite global 50000; ambos os scanners
+atingem 50001 e registram parse_or_node_limit. Os scanners de segurança examinaram
+os 56 candidatos sem arquivos ignorados; a lacuna está na análise estrutural.
+Não aumentar o limite apenas para trocar o status. O escopo hybrid_engine/
+isolado completa dentro do limite e BOUNDED_COMPLETE (seis indicadores, incluindo ausência
+de testes nesse escopo recortado). O Advisor bloqueia implementação a partir da
+avaliação global incompleta. BOUNDED_COMPLETE nunca equivale a segurança integral.
+
+## Compatibilidade, documentação e limites
+
+Contratos e comportamento atualizados em ASSESSMENT.md; CHANGELOG.md contém seção
+não lançada e mudanças de comportamento. Nenhum schema_version, comando público
+ou dependência runtime nova. Metadados de repository/snapshot_partition e imports
+não resolvidos são aditivos; IDs sem SHA/namespace explícito mudam por isolamento.
+Consolidações antigas sem SHA misturadas devem ser reimportadas. Padrões incertos
+e relatórios expansivos antes aceitos agora podem ser rejeitados/incompletos.
+
+Ressalvas aceitas para revisão: grafo JS lexical, aliases/layout src não resolvidos,
+subconjunto YAML/SARIF/globs, falta de timeout de syscalls e snapshot atômico,
+proveniência/SHA não autenticados, possíveis segredos não reconhecíveis em
+metadados e ausência de execução desta revisão em macOS real/CI hospedado.
+Essas restrições são documentadas e não justificam alegações de segurança geral.
+Próxima homologação: reexecutar 251 testes e smokes no Mac do mantenedor; revisão
+humana da PR futura e decisão separada sobre CI/billing, sem acionamento aqui.
+
+## Commits desta revisão, publicação e rollback
+
+- bdec252: globs/workspace.
+- de20b88: corrida de symlink e nomes não UTF-8.
+- 880f02f: imports conservadores.
+- 5c031d1: isolamento e fronteira do Advisor.
+- 2764ba9: smoke tests locais preparados no workflow, gatilhos inalterados.
+- 3a897f6: limite de expansão/saída da Evidence Bridge.
+- c125bcc: limite de caminho compartilhado entre enumeração e contrato de relatório.
+- Commit desta atualização: documentação/changelog/evidências finais.
+
+Publicação permitida apenas na branch autorizada, após nova inspeção dos gatilhos
+e de PRs abertas. ci.yml mantém push main / pull_request main; nenhuma abertura de
+PR ou execução hospedada é autorizada nesta missão. HEAD remoto final será
+confirmado no relatório de entrega. Sem force push, merge, deploy, release,
+migration, banco, pentest, scanners externos ou alteração de produção.
+Rollback: abandonar a branch ou reverter apenas estes commits, em ordem inversa,
+num fluxo revisado; não há dados/migrations para restaurar.
+
+---
+
+## Histórico anterior à revisão pré-PR
+
+Os estados abaixo documentam missões anteriores e são substituídos pelo resultado
+atual acima; permanecem no mesmo plano para rastreabilidade.
+
 # Plano único e evidências — missão avançada
 
 ## Estado atual

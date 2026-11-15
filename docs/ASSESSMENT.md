@@ -25,7 +25,12 @@ profundidade 64, incluindo entradas inelegíveis. Ignora diretórios de artefato
 symlinks antes de descentes. A travessia é iterativa, ordenada por diretório; não
 faz segunda varredura para contar o restante. Um diretório que consome o orçamento
 restante é descartado inteiro para evitar um subconjunto arbitrário dependente da
-ordem do filesystem. Atingir exatamente o limite de entradas também é truncamento
+ordem do filesystem. Caminhos relativos têm o mesmo limite de 1024 caracteres do leitor de relatórios;
+excedentes são contabilizados em path_length_excluded e tornam cobertura incompleta.
+Nomes de arquivo sem representação UTF-8 são contabilizados como falhas, sem
+interromper o relatório. Arquivos regulares trocados por symlink entre inventário e
+leitura contam como falha, em vez de desaparecerem silenciosamente.
+Atingir exatamente o limite de entradas também é truncamento
 conservador. Diretórios já completados permanecem no relatório.
 
 `coverage.enumeration` registra limites, entradas/diretórios examinados, exclusões
@@ -85,6 +90,9 @@ import/export estático relativo, descartando comentários, strings e templates.
 
 Limites estruturais: 128 KiB por fonte, 50000 nós AST globais, 2000 arestas.
 Parsing/limites/leitura impossíveis são registrados e tornam assessment incompleto.
+Pacotes Python com `__init__.py` têm precedência sobre módulos `.py` homônimos.
+Imports relativos além do package conhecido e múltiplos alvos locais JS/TS não são
+adivinhados: `unresolved_imports` registra a localização e o motivo.
 Não resolve imports dinâmicos, require, aliases tsconfig/bundler, pacotes externos
 ou todas as raízes/layouts src de Python. JS lexical não é parser semântico completo;
 Python 3.11 não aceita toda sintaxe de Python 3.12. Nenhuma inferência automática de
@@ -109,14 +117,22 @@ compartilhado é reportada no proprietário, sem repetir em cada filho.
 lockfiles para provar frescor/validade, nem executa installs. Nomes de diretórios e
 symlinks não contam como lockfile. Yarn/pnpm YAML completo, anchors, listas inline,
 exclusões e managers personalizados não são suportados: lacunas ficam explícitas,
-com cobertura incompleta em vez de inferência silenciosa. Globs usam fnmatch sobre
-caminhos relativos; diferenças de semântica com ferramentas reais exigem revisão.
+com cobertura incompleta em vez de inferência silenciosa. Globs usam um subconjunto portátil por segmentos literais ASCII: `*` e `?` não atravessam `/`,
+e `**` como segmento inteiro corresponde a zero ou mais níveis. Assim,
+`packages/*` não inclui `packages/a/deep`, mas `packages/**` inclui. Prefixo `./`
+e barra final são normalizados; vence o proprietário ancestral compatível mais
+próximo. Braces, classes, extglobs, exclusões, segmentos vazios/intermediários,
+`..` e `**` misturado a outros caracteres tornam a análise INCOMPLETE. Não é
+compatibilidade integral com os dialetos npm/pnpm/Yarn/Bun, opções de dotfiles,
+symlinks ou diferenças de versão. A semântica dos managers não foi validada por
+instalações ou execução de seus scripts.
 
 ## Advisor determinístico
 
 Valida assessment v1, classificações, IDs, caminhos e métricas estruturais; deduplica
 achados idênticos e rejeita conflitos. Até 5000 achados; JSON até 8 MiB/profundidade 64,
-sem chaves repetidas/constantes não finitas. Não aceita symlink/FIFO na entrada nem
+sem chaves repetidas/constantes não finitas. Resolve o diretório pai confiável da entrada (incluindo `/tmp` → `/private/tmp` no
+macOS), mas não aceita symlink/FIFO como arquivo final nem
 sobrescreve o relatório de entrada. Textos arbitrários de mensagens e recomendações
 não são encaminhados como instruções.
 
@@ -140,8 +156,13 @@ python3 -m hybrid_engine evidence-import --report /tmp/tool-report.json --format
 python3 -m hybrid_engine advise --report /tmp/evidence.json
 ~~~
 
-Aceita um a oito relatórios JSON (até 8 MiB cada), 2000 resultados globais e
-profundidade 64. Os mesmos controles de leitura/parser do Advisor são reutilizados.
+Aceita um a oito relatórios JSON (até 8 MiB cada), 2000 resultados e 2000
+caminhos de escopo globais, e
+profundidade 64. A expansão de escopos repetidos por achado é limitada a 8 MiB,
+e o JSON consolidado com indentação (incluindo newline) também deve caber em
+8 MiB, para poder ser consumido pelo leitor do Advisor. Entradas pequenas não
+podem expandir sem limite na saída. Os mesmos controles de leitura/parser do
+Advisor são reutilizados.
 Rejeita formatos malformados, caminhos externos e scope incompatível. Não baixa
 artefatos, resolve referências externas, interpreta instruções ou executa comandos.
 Fixtures são exclusivamente sintéticos e não exigem conta, scanner ou chave.
@@ -149,8 +170,8 @@ Fixtures são exclusivamente sintéticos e não exigem conta, scanner ou chave.
 Contrato nativo `kind=external_evidence`, `schema_version=1`:
 
 - tool: name/version identificadores limitados.
-- target: code_sha opcional (40 hex minúsculos), environment (offline/fixture/staging/
-  production/unknown), scope com arquivos relativos exatos.
+- target: code_sha opcional (40 hex minúsculos), repository opcional (`owner/repo`),
+  environment (offline/fixture/staging/production/unknown), scope com arquivos relativos exatos.
 - coverage.status: COMPLETE/INCOMPLETE/UNKNOWN, alegado pela ferramenta.
 - findings: rule, path, line, severity (critical/high/medium/low), verification opcional
   e mapped_rule opcional para mapear uma regra Hybrid existente.
@@ -160,13 +181,19 @@ CONFIRMED_IN_STAGING, FALSE_POSITIVE_REVIEWED e NOT_TESTED. Permanecem claims:
 resultado normalizado é sempre suspected/NEEDS_VALIDATION. Um falso positivo
 alegado não elimina o achado; uma confirmação alegada não confirma exploração.
 
-A proveniência guarda ferramenta/versão, SHA256 do relatório, SHA declarado,
+A proveniência guarda ferramenta/versão, SHA256 do relatório, SHA e repositório declarados,
 ambiente, severidade e verificação declaradas. `--expected-sha` compara somente a
 alegação fornecida; não verifica bytes do código ou autoria. Divergência torna
 cobertura incompleta. `source_sha_verification` continua NOT_VERIFIED mesmo quando
 coincide. Dedup por regra mapeada/local/linha/SHA/ambiente/escopo preserva proveniências
 e divergências; sem mapeamento explícito, regras de ferramentas distintas ficam
-separadas. Não tenta adivinhar causa comum.
+separadas. Repositórios declarados distintos ficam isolados. Sem SHA declarado,
+cada arquivo/run é particionado pelo digest do relatório e índice do run: não se
+presume um snapshot comum. Reimportar a mesma entrada ainda deduplica. Não tenta
+adivinhar causa comum. Repositório e SHA são alegações não autenticadas.
+O Advisor rejeita confiança promovida ou origem contraditória com proveniência
+externa, exige um único vínculo de snapshot por finding e considera falhas da
+enumeração mesmo se um resumo contraditório disser BOUNDED_COMPLETE.
 
 Mensagens livres, snippets, comandos, anexos e URLs são OMITIDOS, em vez de tentar
 redigir parcialmente um texto arbitrário. Identificadores/caminhos com padrões
@@ -176,7 +203,7 @@ todo segredo inventado em metadados: revise relatórios antes de compartilhá-lo
 SARIF: somente 2.1.0, tool.driver.name/version, results com ruleId/level e uma
 physicalLocation por resultado, URI relativa literal e startLine positivo.
 Níveis error/warning/note/none mapeiam high/medium/low/low. Propriedades opcionais
-run.properties.hybrid_scope/hybrid_code_sha/hybrid_environment e
+run.properties.hybrid_scope/hybrid_code_sha/hybrid_environment/hybrid_repository e
 result.properties.hybrid_rule têm o mesmo contrato nativo. Sem escopo exato ou
 invocations.executionSuccessful=true declarados, cobertura fica INCOMPLETE.
 URIs absolutas/remotas, uriBaseId, artifact index, múltiplas locations e suppressions
