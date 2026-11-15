@@ -58,6 +58,7 @@ def scan(root: Path, *, include_paths: set[str] | None = None,
         filename = path.name
         relative = path.relative_to(root).as_posix()
         if path.is_symlink():
+            skipped += 1  # A regular inventory entry changed before reading.
             continue
         if include_paths is not None:
             if relative not in include_paths:

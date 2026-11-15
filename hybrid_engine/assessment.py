@@ -61,7 +61,7 @@ GUIDANCE = {
         "Locate the actual test strategy and add a small regression test if absent.",
         "A documented and runnable test covers one critical behavior."),
     "MISSING_JS_LOCKFILE": (
-        "A root package manifest exists without a recognized lockfile.",
+        "A package manifest has no applicable recognized lockfile.",
         "Identify the intended package manager and commit its reproducible lockfile.",
         "A clean install follows the project's supported package manager."),
     "PUBLIC_PRIVILEGED_CONFIG": (
@@ -100,6 +100,7 @@ def _inventory(root: Path, tree: Enumeration) -> tuple[list[str], int, int, bool
         name = path.name
         rel = path.relative_to(root).as_posix()
         if path.is_symlink():
+            skipped += 1  # A regular inventory entry changed before reading.
             continue
         if name.startswith(".env"):
             ignored_sensitive += 1

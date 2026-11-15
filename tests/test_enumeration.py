@@ -120,3 +120,30 @@ class EnumerationTests(unittest.TestCase):
                 module, 'enumerate_tree', wraps=enumerate_tree) as wrapped:
             assess_project(Path(temp))
             self.assertEqual(wrapped.call_count, 1)
+
+    def test_regular_file_replaced_by_symlink_is_a_read_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / 'app.py'
+            source.write_text('value=1')
+            target = root / 'target.txt'
+            target.write_text('external content')
+            tree = enumerate_tree(root, SKIP_DIRS)
+            source.unlink()
+            source.symlink_to(target)
+            for scanner in (scan, scan_database):
+                result = scanner(root, enumeration=tree)
+                self.assertEqual(result['files_skipped'], 1)
+            from hybrid_engine.assessment import _inventory
+            self.assertEqual(_inventory(root, tree)[1], 1)
+
+    @unittest.skipUnless(os.name == 'posix', 'POSIX non-UTF8 filename fixture')
+    def test_non_utf8_filename_is_incomplete_instead_of_raising(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            filename = os.fsencode(temp) + b'/bad_\xff.js'
+            with open(filename, 'wb') as stream:
+                stream.write(b'eval(input);')
+            result = assess_project(root)
+            self.assertEqual(result['status'], 'INCOMPLETE')
+            self.assertGreater(result['coverage']['enumeration']['errors'], 0)

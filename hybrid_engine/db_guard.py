@@ -85,7 +85,10 @@ def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=
     for relative in tree.files:
         path = root / relative
         name = path.name
-        if path.is_symlink() or not _candidate(path):
+        if path.is_symlink():
+            skipped += 1  # A regular inventory entry changed before reading.
+            continue
+        if not _candidate(path):
             continue
         if scanned >= MAX_FILES:
             truncated = True

@@ -72,6 +72,7 @@ def enumerate_tree(root: Path, skip_dirs: set | frozenset) -> Enumeration:
                     for entry in sorted(entries, key=lambda e: e.name):
                         path = f'{relative}/{entry.name}' if relative else entry.name
                         try:
+                            path.encode('utf-8')  # Surrogate-escaped filenames cannot enter UTF-8 reports.
                             if entry.is_symlink():
                                 result.symlinks_excluded += 1
                             elif entry.is_dir(follow_symlinks=False):
@@ -83,7 +84,7 @@ def enumerate_tree(root: Path, skip_dirs: set | frozenset) -> Enumeration:
                                 result.files.append(path)
                             else:
                                 result.special_files_excluded += 1
-                        except OSError:
+                        except (OSError, UnicodeError):
                             result.errors += 1
                     pending.extend(reversed(children))
             finally:
