@@ -29,6 +29,15 @@ jobs:
         run: |
           python -m hybrid_engine --help
           python -m hybrid_engine inspect --target .
+          python -m hybrid_engine db-audit --help
+          python -m hybrid_engine assess --help
+          python -m hybrid_engine advise --help
+          python -m hybrid_engine evidence-import --help
+          python -m hybrid_engine assess --target . --output "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
+          python -m hybrid_engine advise --report "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
+          python -m hybrid_engine evidence-import --report tests/fixtures/evidence/native-v1.json --report tests/fixtures/evidence/sarif-2.1.0.json --output "$RUNNER_TEMP/hybrid-evidence.json" > /dev/null
+          python -m hybrid_engine advise --report "$RUNNER_TEMP/hybrid-evidence.json" --output "$RUNNER_TEMP/hybrid-advice.json" > /dev/null
+          python -c "import json, os; p=os.path.join(os.environ['RUNNER_TEMP'], 'hybrid-advice.json'); d=json.load(open(p)); assert d['status']=='BLOCKED' and d['ready_for_proposal'] is False"
           python -m hybrid_engine gh-audit --help
           python -m hybrid_engine gh-propose --help
           python -m hybrid_engine gh-task --help
