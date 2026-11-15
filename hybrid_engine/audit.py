@@ -42,7 +42,8 @@ def detect_stack(root: Path) -> list[str]:
 
 
 def scan(root: Path, *, include_paths: set[str] | None = None,
-         enumeration: Enumeration | None = None) -> dict:
+         enumeration: Enumeration | None = None, reader=None) -> dict:
+    reader = reader or read_source
     root = root.resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
@@ -70,7 +71,7 @@ def scan(root: Path, *, include_paths: set[str] | None = None,
             if path.stat().st_size > MAX_BYTES:
                 skipped += 1
                 continue
-            raw = read_source(root, relative, MAX_BYTES)
+            raw = reader(root, relative, MAX_BYTES)
             if b"\x00" in raw:
                 skipped += 1
                 continue

@@ -70,8 +70,9 @@ def _signal(path: str, content: str) -> set[str]:
     return found
 
 
-def scan_database(root: Path, *, enumeration: Enumeration | None = None) -> dict:
+def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=None) -> dict:
     """Inspect bounded text files only. Never run SQL or contact a database."""
+    reader = reader or read_source
     root = Path(root).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
@@ -93,7 +94,7 @@ def scan_database(root: Path, *, enumeration: Enumeration | None = None) -> dict
             if path.stat().st_size > MAX_BYTES:
                 skipped += 1
                 continue
-            data = read_source(root, path.relative_to(root).as_posix(), MAX_BYTES)
+            data = reader(root, path.relative_to(root).as_posix(), MAX_BYTES)
             if b"\x00" in data:
                 skipped += 1
                 continue

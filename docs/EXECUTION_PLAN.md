@@ -141,3 +141,18 @@ severidades/claims divergentes preservados, confiança sempre suspected. SARIF s
 escopo exato ou execução bem-sucedida declarada é INCOMPLETE. URIs remotas,
 base URIs, índices de artefatos e suppressions não são suportados; nada é buscado.
 Validação D: 220 testes PASS; fixtures sintéticos, sem instalar ou executar ferramentas.
+
+Fase E: cache de bytes por assessment limitado a 8 MiB, sem persistência. Mantém
+os limites menores de cada consumidor, não armazena falhas e não cruza raízes.
+Teste compara relatório com cache habilitado/desabilitado (exceto métricas), sem
+mudanças em achados/cobertura. Fixture de uma fonte passa de 4 para 1 leitura física.
+Medição local, Python 3.12.14, mediana de 7 assessments do mesmo snapshot:
+
+| Piloto | Leituras sem/com cache | Mediana sem/com cache |
+| --- | --- | --- |
+| Hybrid | 210 / 54 | 145,902 / 133,534 ms |
+| Radar | 124 / 35 | 51,791 / 50,071 ms |
+
+Contagens são evidência do trabalho de IO evitado, tempos são apenas observações
+neste ambiente, não benchmark universal. Cache byte-only evita duplicar AST/textos.
+Gates E: 224 testes PASS em Python 3.11.18 e 3.12.14.

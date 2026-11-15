@@ -49,8 +49,9 @@ def _js_imports(text: str):
                 break
 
 
-def analyze_structure(root: Path, candidates: list[str]) -> dict:
+def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict:
     """No imports executed. Graph nodes are only successfully analyzed local files."""
+    reader = reader or read_source
     paths = {p for p in candidates if Path(p).suffix in SUFFIXES}
     records = {}
     pending = []
@@ -59,7 +60,7 @@ def analyze_structure(root: Path, candidates: list[str]) -> dict:
     nodes_used = 0
     for path in sorted(paths):
         try:
-            text = read_source(root, path, MAX_SOURCE_BYTES).decode('utf-8')
+            text = reader(root, path, MAX_SOURCE_BYTES).decode('utf-8')
             if '\x00' in text:
                 raise ValueError('Binary source')
         except (OSError, UnicodeError, ValueError):

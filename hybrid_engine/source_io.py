@@ -48,3 +48,35 @@ def open_directory(root: Path, relative: str = '') -> int:
     except BaseException:
         os.close(descriptor)
         raise
+
+
+class SourceReader:
+    """Per-assessment bounded byte cache. Never persists source or exposes values."""
+
+    def __init__(self, root: Path, max_cache_bytes: int = 8 * 1024 * 1024):
+        self.root = root
+        self.max_cache_bytes = max_cache_bytes
+        self._cache = {}
+        self.cached_bytes = 0
+        self.physical_read_attempts = 0
+        self.cache_hits = 0
+
+    def __call__(self, root: Path, relative: str, limit: int) -> bytes:
+        if root != self.root:
+            raise ValueError('Source cache belongs to a different root')
+        if relative in self._cache:
+            self.cache_hits += 1
+            data = self._cache[relative]
+            if len(data) > limit:
+                raise OSError('Cached source exceeds consumer byte limit')
+            return data
+        self.physical_read_attempts += 1
+        data = read_source(root, relative, limit)
+        if self.cached_bytes + len(data) <= self.max_cache_bytes:
+            self._cache[relative] = data
+            self.cached_bytes += len(data)
+        return data
+
+    def metrics(self) -> dict:
+        return {'physical_read_attempts': self.physical_read_attempts, 'cache_hits': self.cache_hits,
+                'cached_bytes': self.cached_bytes, 'cache_byte_limit': self.max_cache_bytes}

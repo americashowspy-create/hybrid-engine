@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
-from .source_io import read_source
+from .source_io import read_source, SourceReader
 from .structure import analyze_structure
 from .packages import analyze_packages
 from .enumeration import Enumeration, enumerate_tree
@@ -155,7 +155,7 @@ def _finding(source: str, rule: str, severity: str, category: str,
 
 
 def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
-                  inventory_truncated: bool) -> tuple[list[dict], int, int]:
+                  inventory_truncated: bool, reader=read_source) -> tuple[list[dict], int, int]:
     results: list[dict] = []
     hashes: dict[str, str] = {}
     source_count = 0
@@ -166,7 +166,7 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         if path.suffix.lower() not in SOURCE_SUFFIXES:
             continue
         try:
-            content = read_source(root, rel, MAX_BYTES)
+            content = reader(root, rel, MAX_BYTES)
             if b"\x00" in content:
                 skipped += 1
                 continue
@@ -205,12 +205,13 @@ def assess_project(target: Path) -> dict:
     root = Path(target).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
+    reader = SourceReader(root)
     tree = enumerate_tree(root, SKIP_DIRS)
     candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(root, tree)
-    general = scan(root, include_paths=set(candidates), enumeration=tree)
-    database = scan_database(root, enumeration=tree)
+    general = scan(root, include_paths=set(candidates), enumeration=tree, reader=reader)
+    database = scan_database(root, enumeration=tree, reader=reader)
     architecture, arch_skipped, generated_size_excluded = _architecture(
-        root, candidates, has_tests=has_tests, inventory_truncated=truncated)
+        root, candidates, has_tests=has_tests, inventory_truncated=truncated, reader=reader)
     findings = [
         _finding("audit", item["rule"], item["severity"], "security",
                  item["path"], item["line"], item["message"])
@@ -221,13 +222,13 @@ def assess_project(target: Path) -> dict:
                  item["path"], item["line"], item["message"])
         for item in database["findings"])
     findings.extend(architecture)
-    packages = analyze_packages(root, tree.files)
+    packages = analyze_packages(root, tree.files, reader=reader)
     for issue in packages['issues']:
         finding = _finding('architecture', issue['rule'], 'medium', 'quality',
                            issue['path'], 1, GUIDANCE[issue['rule']][0])
         finding['related_paths'] = issue['related_paths']
         findings.append(finding)
-    structure = analyze_structure(root, candidates)
+    structure = analyze_structure(root, candidates, reader=reader)
     for issue in structure['issues']:
         finding = _finding('architecture', issue['rule'], 'low', 'architecture',
                            issue['path'], issue['line'], GUIDANCE[issue['rule']][0])
@@ -263,7 +264,7 @@ def assess_project(target: Path) -> dict:
     status = "INCOMPLETE" if incomplete else "REVIEW_REQUIRED" if findings else "NO_FINDINGS"
     return {
         "schema_version": 1, "mode": "static_read_only", "status": status,
-        "target": str(root), "stack": general["stack"],
+        "target": str(root), "stack": general["stack"], "processing": reader.metrics(),
         "coverage": {
             "scope": "bounded_local_tree", "enumeration": tree.coverage(), "status": "INCOMPLETE" if incomplete else "BOUNDED_COMPLETE",
             "candidate_files": len(candidates), "general_files_scanned": general["files_scanned"],
