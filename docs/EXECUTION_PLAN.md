@@ -98,3 +98,15 @@ Actions, instalação de scanners, Strix, pentest, release ou deploy.
 Para abandonar, deixar de usar esta branch. Se os commits forem incorporados após
 revisão separada, revertê-los em ordem inversa preserva a base; não há migração de
 estado ou dados. A instalação Python isolada não altera dependências do framework.
+
+## Nova missão — baseline 8bd78e6
+
+Baseline reexecutada: 178 PASS em Python 3.11.18. Fase A implementada com
+`enumeration.py`, compartilhada pelos scanners: 20000 entradas, 1000 diretórios,
+profundidade 64. Contagem inclui entradas inelegíveis e diretórios ignorados;
+sem varredura adicional para obter totais desconhecidos. Diretório parcialmente
+enumerado é descartado para preservar determinismo. Uma enumeração por assessment.
+Falhas e arquivos especiais tornam cobertura incompleta; symlinks e diretórios
+ignorados são exclusões intencionais contabilizadas. Suíte: 188 PASS em 3.11/3.12.
+Próximos ciclos: B estrutura/imports; C package managers/workspaces; D bridge offline;
+E medições e redução de releituras quando justificadas.

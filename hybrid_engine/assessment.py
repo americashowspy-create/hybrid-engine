@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import hashlib
 import html
-import os
 from pathlib import Path
 
 from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
 from .source_io import read_source
+from .enumeration import Enumeration, enumerate_tree
 
 MAX_FILES = 250
 MAX_BYTES = 256 * 1024
@@ -66,43 +66,39 @@ DEFAULT_GUIDANCE = (
 )
 
 
-def _inventory(root: Path) -> tuple[list[str], int, int, bool, bool]:
+def _inventory(root: Path, tree: Enumeration) -> tuple[list[str], int, int, bool, bool]:
     """Find bounded eligible files without opening any real .env file."""
     found: list[str] = []
     ignored_sensitive = 0
     skipped = 0
     truncated = False
     has_tests = False
-    walk_errors = []
-    for current, dirs, files in os.walk(root, followlinks=False, onerror=walk_errors.append):
-        dirs[:] = sorted(d for d in dirs
-                         if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            path = Path(current) / name
-            rel = path.relative_to(root).as_posix()
-            if path.is_symlink():
-                continue
-            if name.startswith(".env"):
-                ignored_sensitive += 1
-                continue
-            suffix = path.suffix.lower()
-            if suffix not in SCANNABLE and suffix not in {".toml", ".prisma", ".rules"} and name not in SCAN_NAMES:
-                continue
-            if len(found) >= MAX_FILES:
-                truncated = True
-                break
-            try:
-                if path.stat().st_size > MAX_BYTES:
-                    skipped += 1
-                    continue
-            except OSError:
+    for rel in tree.files:
+        path = root / rel
+        name = path.name
+        rel = path.relative_to(root).as_posix()
+        if path.is_symlink():
+            continue
+        if name.startswith(".env"):
+            ignored_sensitive += 1
+            continue
+        suffix = path.suffix.lower()
+        if suffix not in SCANNABLE and suffix not in {".toml", ".prisma", ".rules"} and name not in SCAN_NAMES:
+            continue
+        if len(found) >= MAX_FILES:
+            truncated = True
+            break
+        try:
+            if path.stat().st_size > MAX_BYTES:
                 skipped += 1
                 continue
-            found.append(rel)
-            has_tests = has_tests or (suffix in SOURCE_SUFFIXES and _is_test_source(rel))
-        if truncated:
-            break
-    skipped += len(walk_errors)
+        except OSError:
+            skipped += 1
+            continue
+        found.append(rel)
+        has_tests = has_tests or (suffix in SOURCE_SUFFIXES and _is_test_source(rel))
+    skipped += tree.errors + tree.special_files_excluded
+    truncated = truncated or tree.truncated
     return found, skipped, ignored_sensitive, truncated, has_tests
 
 
@@ -192,9 +188,10 @@ def assess_project(target: Path) -> dict:
     root = Path(target).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
-    candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(root)
-    general = scan(root, include_paths=set(candidates))
-    database = scan_database(root)
+    tree = enumerate_tree(root, SKIP_DIRS)
+    candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(root, tree)
+    general = scan(root, include_paths=set(candidates), enumeration=tree)
+    database = scan_database(root, enumeration=tree)
     architecture, arch_skipped, generated_size_excluded = _architecture(
         root, candidates, has_tests=has_tests, inventory_truncated=truncated)
     findings = [
@@ -238,7 +235,7 @@ def assess_project(target: Path) -> dict:
         "schema_version": 1, "mode": "static_read_only", "status": status,
         "target": str(root), "stack": general["stack"],
         "coverage": {
-            "scope": "bounded_local_tree", "status": "INCOMPLETE" if incomplete else "BOUNDED_COMPLETE",
+            "scope": "bounded_local_tree", "enumeration": tree.coverage(), "status": "INCOMPLETE" if incomplete else "BOUNDED_COMPLETE",
             "candidate_files": len(candidates), "general_files_scanned": general["files_scanned"],
             "general_files_skipped": general["files_skipped"],
             "architecture_files_skipped": arch_skipped,

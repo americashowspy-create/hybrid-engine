@@ -38,10 +38,8 @@ class AssessmentHardeningTests(unittest.TestCase):
                 read_source(root, 'source.py', 100)
 
     def test_directory_walk_error_marks_incomplete(self):
-        def denied(*args, **kwargs):
-            kwargs['onerror'](PermissionError('unreadable directory'))
-            return iter(())
-        with tempfile.TemporaryDirectory() as temp, patch('os.walk', side_effect=denied):
+        with tempfile.TemporaryDirectory() as temp, patch(
+                'hybrid_engine.enumeration.os.scandir', side_effect=PermissionError('unreadable directory')):
             result = assess_project(Path(temp))
             self.assertEqual(result['status'], 'INCOMPLETE')
             self.assertGreater(result['coverage']['inventory_files_skipped'], 0)

@@ -1,11 +1,11 @@
 """Read-only repository inventory and conservative static security indicators."""
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
 
 from .source_io import read_source
+from .enumeration import Enumeration, enumerate_tree
 
 SKIP_DIRS = {
     ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
@@ -41,7 +41,8 @@ def detect_stack(root: Path) -> list[str]:
     return [name for name, paths in signals.items() if any((root / path).exists() for path in paths)]
 
 
-def scan(root: Path, *, include_paths: set[str] | None = None) -> dict:
+def scan(root: Path, *, include_paths: set[str] | None = None,
+         enumeration: Enumeration | None = None) -> dict:
     root = root.resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
@@ -50,66 +51,64 @@ def scan(root: Path, *, include_paths: set[str] | None = None) -> dict:
     skipped = 0
     truncated = False
 
-    walk_errors = []
-    for current, dirs, filenames in os.walk(root, followlinks=False, onerror=walk_errors.append):
-        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
-        for filename in sorted(filenames):
-            path = Path(current) / filename
-            relative = path.relative_to(root).as_posix()
-            if path.is_symlink():
+    tree = enumeration if enumeration is not None else enumerate_tree(root, SKIP_DIRS)
+    for relative in tree.files:
+        path = root / relative
+        filename = path.name
+        relative = path.relative_to(root).as_posix()
+        if path.is_symlink():
+            continue
+        if include_paths is not None:
+            if relative not in include_paths:
                 continue
-            if include_paths is not None:
-                if relative not in include_paths:
-                    continue
-            elif path.suffix.lower() not in SCANNABLE and filename not in EXTRA_NAMES:
-                continue
-            if scanned >= MAX_FILES:
-                truncated = True
-                break
-            try:
-                if path.stat().st_size > MAX_BYTES:
-                    skipped += 1
-                    continue
-                raw = read_source(root, relative, MAX_BYTES)
-                if b"\x00" in raw:
-                    skipped += 1
-                    continue
-                source = raw.decode("utf-8")
-            except (OSError, UnicodeDecodeError):
+        elif path.suffix.lower() not in SCANNABLE and filename not in EXTRA_NAMES:
+            continue
+        if scanned >= MAX_FILES:
+            truncated = True
+            break
+        try:
+            if path.stat().st_size > MAX_BYTES:
                 skipped += 1
                 continue
-            scanned += 1
-            relative = path.relative_to(root).as_posix()
-            for lineno, line in enumerate(source.splitlines(), 1):
-                for key, severity, pattern, allowed in PATTERNS:
-                    if allowed is not None and path.suffix.lower() not in allowed:
-                        continue
-                    if pattern.search(line):
-                        if len(findings) >= MAX_FINDINGS:
-                            truncated = True
-                            break
-                        findings.append({
-                            "rule": key, "severity": severity, "path": relative, "line": lineno,
-                            "confidence": "suspected",
-                            "message": (
-                                "HTML rendering sink observed; trace the HTML source and sanitizer. "
-                                "Static or sanitized HTML may be intentional; exploitability is not verified."
-                                if key == "REACT_HTML_INJECTION" else
-                                "Potential issue: review this location; original value intentionally omitted."
-                            )
-                        })
-                if truncated:
-                    break
+            raw = read_source(root, relative, MAX_BYTES)
+            if b"\x00" in raw:
+                skipped += 1
+                continue
+            source = raw.decode("utf-8")
+        except (OSError, UnicodeDecodeError):
+            skipped += 1
+            continue
+        scanned += 1
+        relative = path.relative_to(root).as_posix()
+        for lineno, line in enumerate(source.splitlines(), 1):
+            for key, severity, pattern, allowed in PATTERNS:
+                if allowed is not None and path.suffix.lower() not in allowed:
+                    continue
+                if pattern.search(line):
+                    if len(findings) >= MAX_FINDINGS:
+                        truncated = True
+                        break
+                    findings.append({
+                        "rule": key, "severity": severity, "path": relative, "line": lineno,
+                        "confidence": "suspected",
+                        "message": (
+                            "HTML rendering sink observed; trace the HTML source and sanitizer. "
+                            "Static or sanitized HTML may be intentional; exploitability is not verified."
+                            if key == "REACT_HTML_INJECTION" else
+                            "Potential issue: review this location; original value intentionally omitted."
+                        )
+                    })
             if truncated:
                 break
         if truncated:
             break
-    skipped += len(walk_errors)
+    skipped += tree.errors + tree.special_files_excluded
+    truncated = truncated or tree.truncated
     return {
         "target": str(root),
         "stack": detect_stack(root),
         "files_scanned": scanned,
-        "files_skipped": skipped,
+        "files_skipped": skipped, "enumeration": tree.coverage(),
         "truncated": truncated,
         "findings": findings,
         "limitations": [

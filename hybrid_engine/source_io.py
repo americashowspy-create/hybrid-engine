@@ -15,14 +15,8 @@ def read_source(root: Path, relative: str, limit: int) -> bytes:
     parts = Path(relative).parts
     if not parts or Path(relative).is_absolute() or any(p in (".", "..") for p in parts):
         raise ValueError("Expected a relative source file")
-    if not hasattr(os, "O_NOFOLLOW") or os.open not in os.supports_dir_fd:
-        raise OSError("Safe descriptor-relative reads are unavailable on this platform")
-    directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    directory = open_directory(root, '/'.join(parts[:-1]))
     try:
-        for part in parts[:-1]:
-            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
-            os.close(directory)
-            directory = child
         descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
                              dir_fd=directory)
         with os.fdopen(descriptor, "rb") as stream:
@@ -35,3 +29,22 @@ def read_source(root: Path, relative: str, limit: int) -> bytes:
             return data
     finally:
         os.close(directory)
+
+
+def open_directory(root: Path, relative: str = '') -> int:
+    """Return an owned directory descriptor without following child symlinks."""
+    parts = Path(relative).parts
+    if Path(relative).is_absolute() or any(part == '..' for part in parts):
+        raise ValueError('Expected relative directory')
+    if not hasattr(os, 'O_NOFOLLOW') or os.open not in os.supports_dir_fd:
+        raise OSError('Safe descriptor-relative reads are unavailable on this platform')
+    descriptor = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for part in parts:
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
