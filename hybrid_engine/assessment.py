@@ -102,6 +102,23 @@ def _inventory(root: Path) -> tuple[list[str], int, int, bool, bool]:
     return found, skipped, ignored_sensitive, truncated, has_tests
 
 
+def _is_test_source(path: str) -> bool:
+    """Identify ordinary test paths; real credential matches still remain findings."""
+    parts = Path(path).parts
+    name = parts[-1] if parts else ""
+    return (any(part in ("test", "tests", "__tests__") for part in parts[:-1])
+            or name.startswith("test_")
+            or name.endswith(("_test.py", ".test.js", ".test.ts", ".test.tsx",
+                              ".spec.js", ".spec.ts", ".spec.tsx")))
+
+
+def _is_generated_supabase_types(path: Path, source: str) -> bool:
+    """Narrow signature; a filename alone is insufficient to classify generated code."""
+    return (path.name == "database.types.ts"
+            and "export type Database =" in source
+            and "__InternalSupabase" in source)
+
+
 def _finding(source: str, rule: str, severity: str, category: str,
              path: str, line: int, message: str) -> dict:
     key = f"{source}:{rule}:{path}:{line}"
@@ -109,16 +126,18 @@ def _finding(source: str, rule: str, severity: str, category: str,
         "id": hashlib.sha256(key.encode("utf-8")).hexdigest()[:16],
         "source": source, "rule": rule, "severity": severity,
         "category": category, "confidence": "suspected",
+        "context": "test_source" if _is_test_source(path) else "application_source",
         "path": path, "line": line, "message": message,
     }
 
 
 def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
-                  inventory_truncated: bool) -> tuple[list[dict], int]:
+                  inventory_truncated: bool) -> tuple[list[dict], int, int]:
     results: list[dict] = []
     hashes: dict[str, str] = {}
     source_count = 0
     skipped = 0
+    generated_size_excluded = 0
     for rel in candidates:
         path = root / rel
         if path.suffix.lower() not in SOURCE_SUFFIXES:
@@ -135,9 +154,12 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         source_count += 1
         line_count = len(source.splitlines())
         if line_count > LONG_FILE_LINES:
-            results.append(_finding(
-                "architecture", "LARGE_SOURCE_FILE", "low", "architecture",
-                rel, 1, f"Source file has {line_count} lines; review cohesion before refactoring."))
+            if _is_generated_supabase_types(path, source):
+                generated_size_excluded += 1
+            else:
+                results.append(_finding(
+                    "architecture", "LARGE_SOURCE_FILE", "low", "architecture",
+                    rel, 1, f"Source file has {line_count} lines; review cohesion before refactoring."))
         if len(content) >= DUPLICATE_MIN_BYTES:
             digest = hashlib.sha256(content).hexdigest()
             if digest in hashes:
@@ -155,7 +177,7 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
             results.append(_finding(
                 "architecture", "MISSING_JS_LOCKFILE", "medium", "quality",
                 "package.json", 1, "No recognized root JavaScript package lockfile was found."))
-    return results, skipped
+    return results, skipped, generated_size_excluded
 
 
 def assess_project(target: Path) -> dict:
@@ -166,7 +188,7 @@ def assess_project(target: Path) -> dict:
     candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(root)
     general = scan(root, include_paths=set(candidates))
     database = scan_database(root)
-    architecture, arch_skipped = _architecture(
+    architecture, arch_skipped, generated_size_excluded = _architecture(
         root, candidates, has_tests=has_tests, inventory_truncated=truncated)
     findings = [
         _finding("audit", item["rule"], item["severity"], "security",
@@ -179,6 +201,7 @@ def assess_project(target: Path) -> dict:
         for item in database["findings"])
     findings.extend(architecture)
     findings.sort(key=lambda x: (SEVERITY_ORDER.get(x["severity"], 9),
+                                 x["context"] == "test_source",
                                  x["category"], x["path"], x["line"], x["rule"], x["id"]))
 
     recommendations = []
@@ -189,6 +212,12 @@ def assess_project(target: Path) -> dict:
             "priority": "P1_REVIEW" if item["severity"] in ("critical", "high") else
                         "P2_REVIEW" if item["severity"] == "medium" else "P3_REVIEW",
             "why": why, "action": action, "acceptance": acceptance,
+            "review_note": (
+                "This is test source; verify whether the match is a synthetic fixture. "
+                "A genuine secret committed in tests remains a high-priority risk."
+                if item["context"] == "test_source" else
+                "Review applicability in the deployed application and intended access scope."
+            ),
             "validation": "Validate with targeted tests or authorized read-only checks; not executed.",
             "rollback": "Revert only an eventual separately approved code change.",
             "status": "PROPOSED_NOT_APPLIED",
@@ -206,6 +235,7 @@ def assess_project(target: Path) -> dict:
             "candidate_files": len(candidates), "general_files_scanned": general["files_scanned"],
             "general_files_skipped": general["files_skipped"],
             "architecture_files_skipped": arch_skipped,
+            "generated_types_excluded_from_size_rule": generated_size_excluded,
             "inventory_files_skipped": skipped, "sensitive_env_files_excluded": ignored_sensitive,
             "db_files_scanned": database["files_scanned"],
             "db_files_skipped": database["files_skipped"],
@@ -213,6 +243,12 @@ def assess_project(target: Path) -> dict:
             "db_findings_truncated": database["findings_truncated"],
         },
         "database_signals": database["database_signals"],
+        "summary": {
+            "application_source_findings": sum(
+                x["context"] == "application_source" for x in findings),
+            "test_source_findings": sum(
+                x["context"] == "test_source" for x in findings),
+        },
         "findings": findings, "recommendations": recommendations,
         "verification": {
             "tests": {"status": "NOT_RUN", "reason": "Assessment never executes project tests."},
@@ -223,6 +259,8 @@ def assess_project(target: Path) -> dict:
             "Static bounded heuristics only; findings are suspected, not proven vulnerabilities.",
             "NO_FINDINGS is not a security certification or a claim of full coverage.",
             "Only recognized files within the bounded scan were inspected; skipped/truncated work is incomplete.",
+            "Test-code findings stay visible and are never automatically dismissed as fake secrets.",
+            "Generated Supabase types can be exempted from the size heuristic, not other security rules.",
             "Secrets and matched source code excerpts are never included in the report.",
             "No real .env file, production database, network API, application script or test is accessed.",
             "Recommendations require a capable authorized agent and separate review before implementation.",
@@ -238,6 +276,8 @@ def assessment_markdown(report: dict) -> str:
         f"- Coverage: **{report['coverage']['status']}**",
         f"- Stack signals: {', '.join(report['stack']) or 'none'}",
         f"- Findings: {len(report['findings'])}",
+        f"- Application-source findings: {report['summary']['application_source_findings']}",
+        f"- Test-source findings: {report['summary']['test_source_findings']}",
         "- Project tests: **NOT_RUN**", "",
         "## Review findings", "",
     ]
@@ -247,6 +287,8 @@ def assessment_markdown(report: dict) -> str:
             f"### {item['rule']} — {advice['priority']}",
             f"- Location: {safe_path}:{item['line']}",
             f"- Confidence: **{item['confidence']}** ({item['source']})",
+            f"- Context: {item['context']}",
+            f"- Review: {advice['review_note']}",
             f"- Action: {advice['action']}",
             f"- Acceptance: {advice['acceptance']}", "",
         ])
