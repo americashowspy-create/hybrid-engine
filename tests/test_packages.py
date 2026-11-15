@@ -96,3 +96,66 @@ class PackageTests(unittest.TestCase):
             (root / 'pnpm-workspace.yaml').unlink()
             self.put(root, 'package.json', '{"workspaces":[],"workspaces":["apps/*"]}')
             self.assertEqual(assess_project(root)['status'], 'INCOMPLETE')
+
+    def test_workspace_star_does_not_cross_directory_boundaries(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.put(root, 'package.json', {'workspaces': ['packages/*']})
+            self.put(root, 'yarn.lock', '')
+            self.put(root, 'packages/a/package.json', {})
+            self.put(root, 'packages/a/deep/package.json', {})
+            result = assess_project(root)
+            packages = {p['path']: p for p in result['packages']['packages']}
+            self.assertEqual(packages['packages/a/package.json']['workspace_owner'], 'package.json')
+            self.assertIsNone(packages['packages/a/deep/package.json']['workspace_owner'])
+            missing = [i['path'] for i in result['packages']['issues'] if i['rule'] == 'MISSING_JS_LOCKFILE']
+            self.assertEqual(missing, ['packages/a/deep/package.json'])
+
+    def test_supported_globs_have_explicit_segment_depth(self):
+        for pattern, expected in [('packages/*/deep', ['packages/a/deep/package.json']),
+                                  ('packages/**', ['packages/a/package.json', 'packages/a/deep/package.json']),
+                                  ('packages/**/deep', ['packages/a/deep/package.json']),
+                                  ('packages/?', ['packages/a/package.json']),
+                                  ('./packages/*/', ['packages/a/package.json'])]:
+            with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                self.put(root, 'package.json', {'workspaces': [pattern]})
+                self.put(root, 'yarn.lock', '')
+                for path in ['packages/a/package.json', 'packages/a/deep/package.json']:
+                    self.put(root, path, {})
+                result = assess_project(root)
+                actual = [p['path'] for p in result['packages']['packages'] if p['workspace_owner'] == 'package.json']
+                self.assertEqual(actual, sorted(expected))
+
+    def test_globstar_can_match_zero_segments(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.put(root, 'package.json', {'workspaces': ['packages/**/app']})
+            self.put(root, 'bun.lock', '')
+            for path in ['packages/app/package.json', 'packages/a/app/package.json']:
+                self.put(root, path, {})
+            result = assess_project(root)
+            self.assertTrue(all(p['workspace_owner'] == 'package.json'
+                                for p in result['packages']['packages'] if p['path'] != 'package.json'))
+
+    def test_nearest_matching_workspace_owns_lock_inheritance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.put(root, 'package.json', {'workspaces': ['packages/**'], 'packageManager': 'yarn@4'})
+            self.put(root, 'yarn.lock', '')
+            self.put(root, 'packages/a/package.json', {'workspaces': ['children/*'], 'packageManager': 'pnpm@9'})
+            self.put(root, 'packages/a/pnpm-lock.yaml', '')
+            self.put(root, 'packages/a/children/b/package.json', {})
+            result = assess_project(root)
+            child = next(p for p in result['packages']['packages'] if p['path'].endswith('children/b/package.json'))
+            self.assertEqual(child['workspace_owner'], 'packages/a/package.json')
+            self.assertEqual(child['effective_manager'], 'pnpm')
+            self.assertEqual(child['lockfile_source'], 'packages/a/package.json')
+
+    def test_uncertain_glob_forms_mark_coverage_incomplete(self):
+        for pattern in ('packages/{a,b}', 'packages/[ab]', 'packages/@(a|b)',
+                        '!packages/a', 'packages/ab**', 'packages//a'):
+            with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                self.put(root, 'package.json', {'workspaces': [pattern]})
+                self.assertEqual(assess_project(root)['status'], 'INCOMPLETE')

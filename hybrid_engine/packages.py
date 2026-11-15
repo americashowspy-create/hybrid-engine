@@ -15,6 +15,30 @@ MAX_MANIFESTS = 100
 MAX_MANIFEST_BYTES = 64 * 1024
 
 
+def _workspace_pattern(value: str) -> str:
+    """Portable subset only: literal segments, *, ? and whole-segment **."""
+    if not isinstance(value, str) or len(value) > 256:
+        raise ValueError('Unsupported workspace pattern')
+    pattern = value[2:] if value.startswith('./') else value
+    pattern = pattern.rstrip('/')
+    parts = pattern.split('/')
+    if any(part in {'', '.', '..'} or not re.fullmatch(r'[A-Za-z0-9_.@?*-]+', part)
+           or ('**' in part and part != '**') for part in parts):
+        raise ValueError('Unsupported workspace pattern')
+    return pattern
+
+
+def _workspace_matches(path: str, pattern: str) -> bool:
+    parts = path.split('/')
+    positions = {0}
+    for segment in pattern.split('/'):
+        if segment == '**':
+            positions = set(range(min(positions), len(parts) + 1)) if positions else set()
+        else:
+            positions = {n + 1 for n in positions if n < len(parts) and fnmatch.fnmatchcase(parts[n], segment)}
+    return len(parts) in positions
+
+
 def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
     reader = reader or read_source
     known = set(files)
@@ -57,10 +81,9 @@ def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
                         if not match:
                             raise ValueError('Unsupported pnpm workspace YAML')
                         workspace.append(match.group(1))
-            if len(workspace) > 100 or any(not isinstance(p, str) or len(p) > 256
-                    or p.startswith(('/', '!')) or '..' in p.split('/') or '\\' in p
-                    for p in workspace):
-                raise ValueError('Unsupported workspace pattern')
+            if len(workspace) > 100:
+                raise ValueError('Workspace pattern budget exceeded')
+            workspace = [_workspace_pattern(pattern) for pattern in workspace]
             locks = sorted(name for name in LOCK_MANAGERS if posixpath.join(directory, name) in known)
             packages[path] = {'path': path, 'directory': directory, 'declared_manager': manager,
                               'lockfiles': locks, 'workspace_patterns': sorted(set(workspace))}
@@ -76,7 +99,7 @@ def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
             prefix = owner['directory'] + '/' if owner['directory'] else ''
             if directory.startswith(prefix):
                 relative = directory[len(prefix):]
-                if any(fnmatch.fnmatchcase(relative, pattern.rstrip('/')) for pattern in owner['workspace_patterns']):
+                if any(_workspace_matches(relative, pattern) for pattern in owner['workspace_patterns']):
                     owners.append(owner)
         owner = max(owners, key=lambda p: len(p['directory'])) if owners else None
         package['workspace_owner'] = owner['path'] if owner else None
@@ -101,4 +124,5 @@ def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
             'incomplete': incomplete, 'limits': {'manifests': MAX_MANIFESTS, 'manifest_bytes': MAX_MANIFEST_BYTES},
             'limitations': ['Lock presence is metadata only; freshness and content are not validated.',
                             'Only package.json workspaces and the common pnpm packages-list YAML subset are supported.',
-                            'Workspace exclusions, YAML anchors, custom managers and lockfile policies require manual review.']}
+                            'Workspace globs are a portable segment subset, not full npm/pnpm/Yarn/Bun glob compatibility.',
+                            'Workspace exclusions, braces/classes/extglobs, YAML anchors and custom managers require manual review.']}
