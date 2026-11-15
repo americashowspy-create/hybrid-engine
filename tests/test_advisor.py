@@ -139,6 +139,20 @@ class AdvisorTests(unittest.TestCase):
         self.assertIn('add no layers without benefit', order['minimum_scope'])
         self.assertIn('imports', order['side_effects'])
 
+    def test_duplicate_source_plan_preserves_both_locations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ('first.ts', 'second.ts'):
+                (root / name).write_text('export const example = 1;\n' * 60)
+            report = assess_project(root)
+            order = next(o for o in advise(report)['work_orders']
+                         if o['evidence']['rule'] == 'EXACT_DUPLICATE_SOURCE')
+            self.assertEqual(order['likely_files'], ['first.ts', 'second.ts'])
+            self.assertEqual(order['evidence']['related_paths'], ['first.ts'])
+            report['findings'][0]['related_paths'] = ['../outside.ts']
+            with self.assertRaises(ValueError):
+                advise(report)
+
     def test_secrets_remain_high_priority_in_tests_and_rotation_requires_permission(self):
         source = assessment()
         source['findings'][0].update(rule='PRIVATE_KEY', severity='critical', context='test_source')

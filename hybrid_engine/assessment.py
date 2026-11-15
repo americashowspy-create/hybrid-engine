@@ -168,9 +168,11 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         if len(content) >= DUPLICATE_MIN_BYTES:
             digest = hashlib.sha256(content).hexdigest()
             if digest in hashes:
-                results.append(_finding(
+                duplicate = _finding(
                     "architecture", "EXACT_DUPLICATE_SOURCE", "medium", "architecture",
-                    rel, 1, "Eligible source is byte-identical to another file; verify intent."))
+                    rel, 1, "Eligible source is byte-identical to another file; verify intent.")
+                duplicate["related_paths"] = [hashes[digest]]
+                results.append(duplicate)
             else:
                 hashes[digest] = rel
     if source_count and not has_tests and not inventory_truncated:

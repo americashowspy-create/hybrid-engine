@@ -123,6 +123,11 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         # Copy only structural evidence. Never forward supplied messages or advice.
         normalized = {k: item[k] for k in ('id', 'rule', 'severity', 'confidence', 'source',
                                           'category', 'context', 'path', 'line')}
+        related = item.get('related_paths', [])
+        if not isinstance(related, list) or len(related) > 20:
+            raise ValueError('Invalid related paths')
+        if related:
+            normalized['related_paths'] = sorted({_path(value) for value in related})
         if item['id'] in seen and seen[item['id']] != normalized:
             raise ValueError('Conflicting duplicate finding ID')
         location = (item['source'], rule, path, item['line'])
@@ -173,7 +178,8 @@ def advise(report: dict) -> dict:
             'confidence': item['confidence'],
             'priority': ('P1_REVIEW' if item['severity'] in {'critical', 'high'} else
                          'P2_REVIEW' if item['severity'] == 'medium' else 'P3_REVIEW'),
-            'likely_files': [] if item['path'] == '.' else [item['path']],
+            'likely_files': sorted(set(([item['path']] if item['path'] != '.' else [])
+                                       + item.get('related_paths', []))),
             'prerequisites': ['Inspect current source and project instructions.',
                               'Record repository, branch, base commit and exact file hashes.',
                               'Confirm the heuristic applies and review existing tests before execution.'],

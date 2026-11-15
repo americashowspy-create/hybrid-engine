@@ -84,3 +84,23 @@ class AssessmentHardeningTests(unittest.TestCase):
             self.assertNotIn('<img', rendered)
             self.assertNotIn('[go](evil)', rendered)
             self.assertNotIn('\n# [go]', rendered)
+
+    def test_general_finding_limit_marks_incomplete(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'source.ts').write_text('eval(input);\n' * 10)
+            with patch('hybrid_engine.audit.MAX_FINDINGS', 3):
+                report = assess_project(root)
+            self.assertEqual(report['status'], 'INCOMPLETE')
+            self.assertTrue(report['coverage']['truncated'])
+            self.assertEqual(len([f for f in report['findings'] if f['rule'] == 'JS_EVAL']), 3)
+
+    def test_generated_dependency_directories_excluded_consistently(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for name in ('vendor', 'target', '.cache'):
+                (root / name).mkdir()
+                (root / name / 'generated.ts').write_text('eval(input);')
+            report = assess_project(root)
+            self.assertEqual(report['findings'], [])
+            self.assertEqual(report['coverage']['candidate_files'], 0)

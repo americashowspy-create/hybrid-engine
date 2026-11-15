@@ -9,12 +9,13 @@ from .source_io import read_source
 
 SKIP_DIRS = {
     ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
-    ".next", ".nuxt", ".hybrid", "__pycache__", ".pytest_cache", ".turbo", "coverage"
+    ".next", ".nuxt", ".hybrid", "__pycache__", ".pytest_cache", ".turbo", "coverage", ".cache", "vendor", "target"
 }
 SCANNABLE = {".py", ".js", ".jsx", ".ts", ".tsx", ".json", ".yml", ".yaml", ".env", ".sh", ".sql", ".go", ".rs"}
 EXTRA_NAMES = {".env", ".env.local", ".env.production", "Dockerfile"}
 MAX_BYTES = 256 * 1024
 MAX_FILES = 3000
+MAX_FINDINGS = 2000
 
 # Exact patterns only; anything flagged is a lead to validate, not a confirmed vulnerability.
 PATTERNS = (
@@ -84,6 +85,9 @@ def scan(root: Path, *, include_paths: set[str] | None = None) -> dict:
                     if allowed is not None and path.suffix.lower() not in allowed:
                         continue
                     if pattern.search(line):
+                        if len(findings) >= MAX_FINDINGS:
+                            truncated = True
+                            break
                         findings.append({
                             "rule": key, "severity": severity, "path": relative, "line": lineno,
                             "confidence": "suspected",
@@ -94,6 +98,10 @@ def scan(root: Path, *, include_paths: set[str] | None = None) -> dict:
                                 "Potential issue: review this location; original value intentionally omitted."
                             )
                         })
+                if truncated:
+                    break
+            if truncated:
+                break
         if truncated:
             break
     skipped += len(walk_errors)
