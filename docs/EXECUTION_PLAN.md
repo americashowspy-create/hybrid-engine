@@ -120,3 +120,11 @@ Sem inferir responsabilidades de negócio a partir de nomes ou afirmar arquitetu
 ruim por contagens. JS dinâmico, aliases de bundler e layout src Python não resolvidos.
 Primeira validação: 197 testes PASS; piloto Hybrid adicionou 4 indicadores de
 controle concentrado e 1 fan-out; Radar manteve os 12 achados. Análises são pistas.
+
+Fase C: `packages.py` analisa até 100 manifests de 64 KiB, sem instalações.
+Identifica npm/pnpm/Yarn/Bun, packageManager, lockfiles locais e herdados em
+workspaces, múltiplos manifests independentes, conflitos e incompatibilidades.
+Subconjunto pnpm YAML restrito a lista packages; padrões de exclusão/anchors e
+managers desconhecidos exigem revisão e cobertura incompleta. Ausência de lock
+em workspace é reportada no proprietário, evitando duplicatas nos filhos.
+Validação incremental: 203 testes PASS em Python 3.12; gates 3.11 no fechamento.

@@ -9,6 +9,7 @@ from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
 from .source_io import read_source
 from .structure import analyze_structure
+from .packages import analyze_packages
 from .enumeration import Enumeration, enumerate_tree
 
 MAX_FILES = 250
@@ -22,6 +23,14 @@ LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml",
              "yarn.lock", "bun.lock", "bun.lockb")
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 GUIDANCE = {
+    "CONFLICTING_JS_LOCKFILES": (
+        "Different package managers have lockfiles beside the same manifest.",
+        "Confirm supported installation workflows; retain intentional multiple-manager support or propose one consistent policy.",
+        "Document supported managers and verify the authorized clean-install workflow without changing unrelated workspaces."),
+    "PACKAGE_MANAGER_LOCK_MISMATCH": (
+        "Declared package manager differs from the observed lockfile manager.",
+        "Review packageManager and workspace ownership; propose a consistent manager/lockfile pair without installing during assessment.",
+        "Manifest declarations and the supported lockfile agree, with workspace behavior documented."),
     "LOCAL_IMPORT_CYCLE": (
         "Observed local import references form a strongly connected component.",
         "Review the cited component and dependency directions; confirm runtime relevance before proposing a small interface extraction.",
@@ -188,11 +197,6 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         results.append(_finding(
             "architecture", "NO_TESTS_DETECTED", "low", "quality",
             ".", 1, "No conventional test files found in the bounded inventory; verify test coverage."))
-    if (root / "package.json").is_file() and not (root / "package.json").is_symlink():
-        if not any((root / name).is_file() and not (root / name).is_symlink() for name in LOCKFILES):
-            results.append(_finding(
-                "architecture", "MISSING_JS_LOCKFILE", "medium", "quality",
-                "package.json", 1, "No recognized root JavaScript package lockfile was found."))
     return results, skipped, generated_size_excluded
 
 
@@ -217,6 +221,12 @@ def assess_project(target: Path) -> dict:
                  item["path"], item["line"], item["message"])
         for item in database["findings"])
     findings.extend(architecture)
+    packages = analyze_packages(root, tree.files)
+    for issue in packages['issues']:
+        finding = _finding('architecture', issue['rule'], 'medium', 'quality',
+                           issue['path'], 1, GUIDANCE[issue['rule']][0])
+        finding['related_paths'] = issue['related_paths']
+        findings.append(finding)
     structure = analyze_structure(root, candidates)
     for issue in structure['issues']:
         finding = _finding('architecture', issue['rule'], 'low', 'architecture',
@@ -247,7 +257,7 @@ def assess_project(target: Path) -> dict:
             "status": "PROPOSED_NOT_APPLIED",
         })
 
-    incomplete = (bool(structure['incomplete']) or truncated or skipped > 0 or arch_skipped > 0 or
+    incomplete = (bool(packages['incomplete']) or bool(structure['incomplete']) or truncated or skipped > 0 or arch_skipped > 0 or
                   general["truncated"] or general["files_skipped"] > 0 or
                   database["status"] == "INCOMPLETE")
     status = "INCOMPLETE" if incomplete else "REVIEW_REQUIRED" if findings else "NO_FINDINGS"
@@ -260,6 +270,7 @@ def assess_project(target: Path) -> dict:
             "general_files_skipped": general["files_skipped"],
             "architecture_files_skipped": arch_skipped,
             "structure_files_incomplete": len(structure["incomplete"]),
+            "package_files_incomplete": len(packages["incomplete"]),
             "generated_types_excluded_from_size_rule": generated_size_excluded,
             "inventory_files_skipped": skipped, "sensitive_env_files_excluded": ignored_sensitive,
             "db_files_scanned": database["files_scanned"],
@@ -267,7 +278,7 @@ def assess_project(target: Path) -> dict:
             "truncated": truncated or general["truncated"] or database["truncated"],
             "db_findings_truncated": database["findings_truncated"],
         },
-        "database_signals": database["database_signals"], "structure": structure,
+        "database_signals": database["database_signals"], "structure": structure, "packages": packages,
         "summary": {
             "application_source_findings": sum(
                 x["context"] == "application_source" for x in findings),

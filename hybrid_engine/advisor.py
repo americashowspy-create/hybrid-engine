@@ -150,7 +150,7 @@ def _validate(report: dict) -> tuple[list[dict], str]:
     incomplete = (report['status'] == 'INCOMPLETE' or coverage['status'] == 'INCOMPLETE'
                   or any(coverage.get(k) for k in ('truncated', 'db_findings_truncated',
                       'general_files_skipped', 'architecture_files_skipped',
-                      'inventory_files_skipped', 'db_files_skipped', 'structure_files_incomplete')))
+                      'inventory_files_skipped', 'db_files_skipped', 'structure_files_incomplete', 'package_files_incomplete')))
     return sorted(seen.values(), key=lambda f: (SEVERITY_ORDER[f['severity']], f['path'],
                                                 f['line'], f['rule'], f['id'])), ('INCOMPLETE' if incomplete else 'BOUNDED_COMPLETE')
 
