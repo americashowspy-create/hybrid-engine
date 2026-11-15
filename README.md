@@ -4,7 +4,7 @@
 
 Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
 
-**Versão:** `v0.8` (experimental) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão:** `v0.9` (experimental) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
@@ -52,7 +52,7 @@ O protocolo pode ser seguido por **chats com acesso a repositórios, agentes de 
 **Comando universal para copiar:**
 
 ```text
-HYBRID AUTO — v0.8
+HYBRID AUTO — v0.9
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -80,7 +80,7 @@ Não dispare verificações hospedadas desnecessariamente.
 
 ➡️ [Comece aqui](docs/COMECE_AQUI.md) · [Comandos prontos](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo universal](docs/AGENT_AUTO.md).
 
-## ✨ Funcionalidades disponíveis na v0.8
+## ✨ Funcionalidades disponíveis na v0.9
 
 | Recurso | O que entrega |
 | --- | --- |
@@ -111,11 +111,11 @@ Não dispare verificações hospedadas desnecessariamente.
 
 Todos são **instruções portáteis de workflow**, não comandos nativos garantidos em uma plataforma específica.
 
-## 🗄️ DB Guard — proposta experimental para v0.9
+## 🗄️ DB Guard — primeira fase experimental v0.9
 
 O módulo opcional **DB Guard** amplia o protocolo com uma auditoria estática e offline de riscos de banco de dados, sem credenciais nem conexão com produção. Detecta indícios de políticas inseguras, variáveis privilegiadas públicas, tipos monetários imprecisos e migrations destrutivas. **Não valida RLS efetivo, backups, custos reais ou desempenho do banco.**
 
-Na branch de desenvolvimento da v0.9, o comando previsto é `hybrid db-audit --target /caminho/do/projeto`. O fluxo `hybrid run` anexa a análise quando identificar uso de banco de dados. [Documentação e limites](docs/DB_GUARD.md).
+Na v0.9, o comando disponível é `hybrid db-audit --target /caminho/do/projeto`. O fluxo `hybrid run` anexa a análise quando identificar uso de banco de dados. [Documentação e limites](docs/DB_GUARD.md).
 
 ## 💻 Uso opcional pelo terminal
 
@@ -164,6 +164,8 @@ Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo universal para a
 
 ## 🧪 Qualidade e estado do projeto
 
+**v0.9 — homologação local:** 135 testes aprovados no Python 3.11.16 (Mac), incluindo 11 testes do DB Guard. Piloto offline no Radar Artístico: 35 arquivos examinados e 6 alertas suspeitos de políticas SQL, sem alterações no projeto ou no banco. O GitHub Actions não executou o job por bloqueio de faturamento/limite; CI hospedado permanece não homologado.
+
 A v0.8 teve **124 testes Python aprovados em execução offline isolada**, incluindo quatro casos de ponta a ponta com um **GitHub simulado**; os 33 arquivos Python foram comparados ao commit testado via Git blob SHA. Essa evidência está registrada na [PR #9](https://github.com/americashowspy-create/hybrid-engine/pull/9).
 
 **O que isso comprova:** funcionamento da suíte e das simulações naquele commit. O framework implementa seus próprios fluxos de planejamento, diagnóstico e validação; **não incorpora integralmente o código de ferramentas externas**. **O que não comprova:** que todo projeto de terceiros funcionará, que um agente externo terá acesso ou que o CI hospedado passou. Um piloto em repositório externo deve ser avaliado separadamente.
@@ -198,4 +200,4 @@ Comece por [Comece aqui](docs/COMECE_AQUI.md), veja os [prompts prontos](docs/EX
 
 **Projeto independente:** combina, em implementação própria, planejamento, investigação, revisão, controle de mudanças e evidências. Não é fork nem integração oficial de ferramentas externas. Referências e créditos técnicos: [Agradecimentos](ACKNOWLEDGEMENTS.md).
 
-Licenciado sob [MIT](LICENSE) · **v0.8 experimental** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
+Licenciado sob [MIT](LICENSE) · **v0.9 experimental** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.

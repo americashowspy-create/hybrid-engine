@@ -1,4 +1,4 @@
-# Comece aqui — Hybrid Engine v0.8
+# Comece aqui — Hybrid Engine v0.9
 
 Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
 
@@ -24,7 +24,7 @@ Você precisa de:
 3. Peça explicitamente a leitura de `AGENTS.md` e do protocolo universal; cole o exemplo abaixo, substituindo a URL do projeto alvo.
 
 ```text
-HYBRID AUTO — TESTE REAL v0.8
+HYBRID AUTO — TESTE REAL v0.9
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -103,7 +103,7 @@ hybrid run --target /caminho/do/projeto --intent "auditoria"
 
 A CLI cria planos e relatórios, mas **não gera patches de IA por si só**. Para a auditoria remota, configure um `GH_TOKEN` de escopo mínimo **somente no seu ambiente local** e consulte [o guia GitHub](GITHUB_ADAPTER.md). Não envie tokens por mensagem.
 
-Para passar fontes auditadas a um agente local, use `hybrid gh-chat-package` e `hybrid gh-execute --bundle`, descritos no [README](../README.md) e no [protocolo universal v0.8](AGENT_AUTO.md).
+Para passar fontes auditadas a um agente local, use `hybrid gh-chat-package` e `hybrid gh-execute --bundle`, descritos no [README](../README.md) e no [protocolo universal v0.9](AGENT_AUTO.md).
 
 ## 6. E se meus minutos do GitHub Actions acabaram?
 

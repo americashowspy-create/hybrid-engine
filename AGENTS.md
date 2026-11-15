@@ -25,7 +25,7 @@ If a user provides this repository URL and says `HYBRID AUTO`, `AUDIT`, `AUDIT-F
 
 No agent implementation is mandatory. Codex is **optional**, not the backend.
 
-## HYBRID AUTO — provider-neutral workflow (v0.8)
+## HYBRID AUTO — provider-neutral workflow (v0.9)
 
 For a `HYBRID AUTO` request with a target GitHub URL, follow
 [docs/AGENT_AUTO.md](docs/AGENT_AUTO.md) using the tools actually available.
