@@ -17,6 +17,7 @@ The Core does **not** automatically load and execute external prompt instruction
 - Scoped, permissioned executor integration for GitHub API/CLI, optional MCP adapters and machine-readable tool contracts.
 - Safe fix suggestions with structured patches and human/agent review.
 - Pluggable linters (Gitleaks, Opengrep, OWASP ZAP in passive mode), using pinned versions and constrained execution.
+- **Security Validation + Pentest Gate**: future optional security adapter architecture with read-only report ingestion, independent validation and opt-in staging-only active scans. Detailed future design: [Security Validation roadmap](SECURITY_VALIDATION_ROADMAP.md) ([Issue #14](https://github.com/americashowspy-create/hybrid-engine/issues/14)); **not implemented or permitted by HYBRID AUTO**.
 - Advanced capability detection; target-project-specific policy; persistent cross-chat state and audit histories; CI validation against fixture repositories.
 
 No production deployment is included in the MVP.
