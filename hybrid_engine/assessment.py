@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import os
 from pathlib import Path
 
 from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
+from .source_io import read_source
 
 MAX_FILES = 250
 MAX_BYTES = 256 * 1024
@@ -19,6 +21,11 @@ LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml",
              "yarn.lock", "bun.lock", "bun.lockb")
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 GUIDANCE = {
+    "REACT_HTML_INJECTION": (
+        "A React HTML rendering sink was observed; exploitability is not established.",
+        "Trace the HTML source, interpolation and sanitizer. Static trusted HTML may need no change; "
+        "test untrusted paths before choosing sanitization or text rendering.",
+        "Document the trust boundary and test hostile HTML where input is untrusted."),
     "LARGE_SOURCE_FILE": (
         "Review whether this file combines unrelated responsibilities.",
         "Identify coherent modules and propose a small behavior-preserving split.",
@@ -66,7 +73,8 @@ def _inventory(root: Path) -> tuple[list[str], int, int, bool, bool]:
     skipped = 0
     truncated = False
     has_tests = False
-    for current, dirs, files in os.walk(root, followlinks=False):
+    walk_errors = []
+    for current, dirs, files in os.walk(root, followlinks=False, onerror=walk_errors.append):
         dirs[:] = sorted(d for d in dirs
                          if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
         for name in sorted(files):
@@ -80,12 +88,6 @@ def _inventory(root: Path) -> tuple[list[str], int, int, bool, bool]:
             suffix = path.suffix.lower()
             if suffix not in SCANNABLE and suffix not in {".toml", ".prisma", ".rules"} and name not in SCAN_NAMES:
                 continue
-            parts = Path(rel).parts
-            if ("tests" in parts or "__tests__" in parts or "test" in parts
-                    or name.startswith("test_") or name.endswith(("_test.py", ".test.js", ".test.ts",
-                                                                   ".test.tsx", ".spec.js", ".spec.ts",
-                                                                   ".spec.tsx"))):
-                has_tests = True
             if len(found) >= MAX_FILES:
                 truncated = True
                 break
@@ -97,8 +99,10 @@ def _inventory(root: Path) -> tuple[list[str], int, int, bool, bool]:
                 skipped += 1
                 continue
             found.append(rel)
+            has_tests = has_tests or (suffix in SOURCE_SUFFIXES and _is_test_source(rel))
         if truncated:
             break
+    skipped += len(walk_errors)
     return found, skipped, ignored_sensitive, truncated, has_tests
 
 
@@ -109,7 +113,8 @@ def _is_test_source(path: str) -> bool:
     return (any(part in ("test", "tests", "__tests__") for part in parts[:-1])
             or name.startswith("test_")
             or name.endswith(("_test.py", ".test.js", ".test.ts", ".test.tsx",
-                              ".spec.js", ".spec.ts", ".spec.tsx")))
+                              ".spec.js", ".spec.ts", ".spec.tsx", ".test.jsx", ".spec.jsx",
+                              "_test.go", "_test.rs")))
 
 
 def _is_generated_supabase_types(path: Path, source: str) -> bool:
@@ -143,7 +148,7 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         if path.suffix.lower() not in SOURCE_SUFFIXES:
             continue
         try:
-            content = path.read_bytes()
+            content = read_source(root, rel, MAX_BYTES)
             if b"\x00" in content:
                 skipped += 1
                 continue
@@ -165,7 +170,7 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
             if digest in hashes:
                 results.append(_finding(
                     "architecture", "EXACT_DUPLICATE_SOURCE", "medium", "architecture",
-                    rel, 1, f"Eligible source is identical to {hashes[digest]}; verify intent."))
+                    rel, 1, "Eligible source is byte-identical to another file; verify intent."))
             else:
                 hashes[digest] = rel
     if source_count and not has_tests and not inventory_truncated:
@@ -173,7 +178,7 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
             "architecture", "NO_TESTS_DETECTED", "low", "quality",
             ".", 1, "No conventional test files found in the bounded inventory; verify test coverage."))
     if (root / "package.json").is_file() and not (root / "package.json").is_symlink():
-        if not any((root / name).exists() for name in LOCKFILES):
+        if not any((root / name).is_file() and not (root / name).is_symlink() for name in LOCKFILES):
             results.append(_finding(
                 "architecture", "MISSING_JS_LOCKFILE", "medium", "quality",
                 "package.json", 1, "No recognized root JavaScript package lockfile was found."))
@@ -282,7 +287,7 @@ def assessment_markdown(report: dict) -> str:
         "## Review findings", "",
     ]
     for item, advice in zip(report["findings"], report["recommendations"]):
-        safe_path = item["path"].replace("\x60", "'").replace("\n", " ")
+        safe_path = markdown_text(item["path"])
         lines.extend([
             f"### {item['rule']} — {advice['priority']}",
             f"- Location: {safe_path}:{item['line']}",
@@ -297,3 +302,12 @@ def assessment_markdown(report: dict) -> str:
     lines.extend(["", "## Limitations", ""])
     lines.extend(f"- {limitation}" for limitation in report["limitations"])
     return "\n".join(lines) + "\n"
+
+
+def markdown_text(value: str) -> str:
+    """Render untrusted metadata as text, never HTML or Markdown directives."""
+    value = " ".join(value.split())
+    value = html.escape(value, quote=True)
+    for character in "\\`*_{}[]()#+-.!|":
+        value = value.replace(character, "\\" + character)
+    return value

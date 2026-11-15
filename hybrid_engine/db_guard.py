@@ -5,6 +5,8 @@ import os
 import re
 from pathlib import Path
 
+from .source_io import read_source
+
 SKIP_DIRS = frozenset({
     ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
     ".next", ".nuxt", ".hybrid", "__pycache__", ".pytest_cache", ".turbo",
@@ -78,7 +80,8 @@ def scan_database(root: Path) -> dict:
     scanned = skipped = 0
     truncated = False
     findings_truncated = False
-    for current, dirs, files in os.walk(root, followlinks=False):
+    walk_errors = []
+    for current, dirs, files in os.walk(root, followlinks=False, onerror=walk_errors.append):
         dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
         for name in sorted(files):
             path = Path(current) / name
@@ -91,7 +94,7 @@ def scan_database(root: Path) -> dict:
                 if path.stat().st_size > MAX_BYTES:
                     skipped += 1
                     continue
-                data = path.read_bytes()
+                data = read_source(root, path.relative_to(root).as_posix(), MAX_BYTES)
                 if b"\x00" in data:
                     skipped += 1
                     continue
@@ -158,6 +161,7 @@ def scan_database(root: Path) -> dict:
                 break
         if truncated or findings_truncated:
             break
+    skipped += len(walk_errors)
     priority = {area: pos for pos, area in enumerate(CATEGORIES)}
     findings.sort(key=lambda item: (priority[item["category"]], item["path"], item["line"], item["rule"]))
     return {
