@@ -127,3 +127,15 @@ indicadores; nenhuma refatoração é aplicada ao projeto avaliado.
 
 O Evidence Bridge permanece pendente: o contrato interno foi reforçado primeiro.
 Não há importador SARIF, adaptador externo, validação dinâmica nem pentest.
+
+O scanner geral também limita sua saída a 2000 achados; um excedente produz
+`coverage.truncated=true` e `INCOMPLETE`. O DB Guard conserva seu limite independente
+de 500 achados. `vendor/`, `target/` e `.cache/` ficam excluídos consistentemente dos
+scanners. A enumeração do filesystem ainda depende de `os.walk` e não possui timeout
+ou orçamento global de entradas: projetos com milhões de arquivos ignorados podem
+ser lentos. Não há promessa de imunidade a exaustão de recursos nesse cenário.
+
+Duplicações exatas preservam `related_paths` como evidência estrutural, para que o
+Advisor inclua ambos os arquivos prováveis sem incorporar seus nomes em mensagens.
+IDs permanecem baseados em origem/regra/caminho/linha: são determinísticos no mesmo
+snapshot, mas uma inserção de linhas pode mudá-los. Não são identidade semântica.
