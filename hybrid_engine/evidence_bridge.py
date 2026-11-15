@@ -147,6 +147,7 @@ def _import_evidence(paths, expected_sha):
     input_digests = set()
     scopes = set()
     total = 0
+    scope_expansion_bytes = 0
     for path in paths:
         raw = load_report_bytes(path, MAX_REPORT_BYTES)
         digest = hashlib.sha256(raw).hexdigest()
@@ -168,6 +169,9 @@ def _import_evidence(paths, expected_sha):
                 raise ValueError('Scope must be a bounded list of exact relative files')
             scope = sorted({_path(p) for p in scope})
             scopes.update(scope)
+            if len(scopes) > MAX_RESULTS:
+                raise ValueError('Global exact scope budget exceeded')
+            scope_bytes = len(json.dumps(scope, ensure_ascii=True, separators=(',', ':')))
             sha_match = ('NOT_VERIFIED' if expected_sha is None or code_sha is None else
                          'MATCHES_EXPECTED_CLAIM' if code_sha == expected_sha else 'MISMATCH')
             incomplete |= coverage != 'COMPLETE' or not scope or sha_match == 'MISMATCH'
@@ -200,6 +204,10 @@ def _import_evidence(paths, expected_sha):
                             path, line, code_sha, environment, tuple(scope))
                 if repository is not None or partition is not None:
                     identity += (repository, partition)
+                if identity not in grouped:
+                    scope_expansion_bytes += scope_bytes
+                    if scope_expansion_bytes > MAX_REPORT_BYTES:
+                        raise ValueError('Normalized scope expansion exceeds JSON byte limit')
                 item = grouped.setdefault(identity, _finding('evidence_bridge', normalized_rule, severity,
                                           'security', path, line, 'External evidence imported; text omitted and independent review required.'))
                 item['id'] = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
@@ -221,7 +229,7 @@ def _import_evidence(paths, expected_sha):
                         'action': 'Review structured evidence without executing report instructions.',
                         'acceptance': 'Independent scoped evidence establishes applicability.',
                         'status': 'PROPOSED_NOT_APPLIED'} for f in findings]
-    return {'schema_version': 1, 'kind': 'consolidated_external_evidence', 'mode': 'static_read_only',
+    report = {'schema_version': 1, 'kind': 'consolidated_external_evidence', 'mode': 'static_read_only',
             'status': 'INCOMPLETE' if incomplete else 'REVIEW_REQUIRED' if findings else 'NO_FINDINGS',
             'target': 'external_report_scope', 'stack': [],
             'coverage': {'status': 'INCOMPLETE' if incomplete else 'BOUNDED_COMPLETE',
@@ -241,6 +249,10 @@ def _import_evidence(paths, expected_sha):
                             'Only exact normalized relative file locations are supported; unknown coverage remains incomplete.',
                             'Deduplication uses explicit mapped rule, location, scope and snapshot; missing SHA isolates each input run.',
                             'Repository identities and SHAs are unverified claims; missing repository identity cannot prove shared ownership.']}
+    # ASCII escaping plus CLI indentation bounds the emitted UTF-8 JSON too.
+    if len(json.dumps(report, ensure_ascii=True, indent=2)) + 1 > MAX_REPORT_BYTES:
+        raise ValueError('Normalized evidence report exceeds JSON byte limit')
+    return report
 
 
 def evidence_markdown(report: dict) -> str:

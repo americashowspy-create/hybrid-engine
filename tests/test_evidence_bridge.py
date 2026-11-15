@@ -299,3 +299,27 @@ class EvidenceBridgeTests(unittest.TestCase):
         source['runs'][0]['properties']['hybrid_repository'] = 'owner/repository'
         report = self.import_docs([source])
         self.assertEqual(report['findings'][0]['provenance'][0]['repository'], 'owner/repository')
+
+    def test_scope_expansion_budget_prevents_small_input_large_report(self):
+        source = native()
+        source['target']['scope'] += [f'src/{n}_' + 'x' * 200 + '.ts' for n in range(250)]
+        template = source['findings'][0]
+        source['findings'] = [dict(template, line=n + 1) for n in range(200)]
+        # About 100 KiB of input would repeat over 10 MiB of scope in the output.
+        self.assertLess(len(json.dumps(source)), 150000)
+        with self.assertRaisesRegex(ValueError, 'scope expansion'):
+            self.import_docs([source])
+
+    def test_normalized_output_must_fit_the_shared_json_reader(self):
+        with patch('hybrid_engine.evidence_bridge.MAX_REPORT_BYTES', 1024):
+            with self.assertRaisesRegex(ValueError, 'Normalized evidence report exceeds'):
+                self.import_docs([native()])
+
+    def test_exact_scope_budget_is_global_across_reports(self):
+        first, second = native(), native()
+        first['target']['scope'].append('src/extra.ts')
+        second['target']['scope'] = ['other/app.ts', 'other/extra.ts']
+        second['findings'][0]['path'] = 'other/app.ts'
+        with patch('hybrid_engine.evidence_bridge.MAX_RESULTS', 2):
+            with self.assertRaisesRegex(ValueError, 'Global exact scope budget'):
+                self.import_docs([first, second])
