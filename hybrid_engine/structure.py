@@ -66,6 +66,7 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
     issues = []
     incomplete = []
     generated = []
+    unresolved = []
     nodes_used = 0
     for path in sorted(paths):
         try:
@@ -99,7 +100,9 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                         prefix = node.module or ''
                         base = posixpath.dirname(path).split('/') if '/' in path else []
                         if node.level:
-                            if node.level - 1 > len(base):
+                            if node.level > len(base) + int('__init__.py' in paths):
+                                unresolved.append({'path': path, 'line': node.lineno,
+                                                   'reason': 'relative_import_without_known_package'})
                                 continue
                             base = base[:len(base) - node.level + 1]
                             prefix = '.'.join(base + ([prefix] if prefix else []))
@@ -115,7 +118,7 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                 continue
             for module, line in local_imports:
                 base = module.replace('.', '/')
-                target = next((p for p in (base + '.py', base + '/__init__.py') if p in paths), None)
+                target = next((p for p in (base + '/__init__.py', base + '.py') if p in paths), None)
                 if target:
                     pending.append((path, target, line))
         else:
@@ -131,11 +134,17 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                 possibilities += [base + '/index' + s for s in ('.ts', '.tsx', '.js', '.jsx')]
                 if base.endswith('.js'):
                     possibilities += [base[:-3] + '.ts', base[:-3] + '.tsx']
-                target = next((p for p in possibilities if p in paths), None)
-                if target:
-                    pending.append((path, target, line))
+                matches = sorted(set(possibilities) & paths)
+                if len(matches) == 1:
+                    pending.append((path, matches[0], line))
+                elif matches:
+                    unresolved.append({'path': path, 'line': line, 'reason': 'ambiguous_local_target'})
         records[path] = {'path': path, 'method': kind, 'definitions': definitions,
                          'branch_points': branches, 'local_dependencies': 0, 'local_dependents': 0}
+        if len(unresolved) > MAX_EDGES:
+            unresolved = unresolved[:MAX_EDGES]
+            incomplete.append({'path': path, 'reason': 'unresolved_import_budget'})
+            break
         if len(pending) > MAX_EDGES:
             incomplete.append({'path': path, 'reason': 'edge_budget'})
             break
@@ -190,10 +199,11 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                            'related_paths': component[1:21],
                            'metrics': {'component_files': len(component)}})
     return {'files': [records[p] for p in sorted(records)],
+            'unresolved_imports': unresolved,
             'edges': [{'source': a, 'target': b, 'line': n} for a, b, n in edges],
             'issues': issues, 'generated_files_excluded': generated, 'incomplete': incomplete, 'ast_nodes_examined': nodes_used,
             'limits': {'source_bytes': MAX_SOURCE_BYTES, 'ast_nodes': MAX_NODES, 'edges': MAX_EDGES},
             'limitations': ['Local static imports only; no runtime, aliases, tsconfig paths or dependency execution.',
-                            'Python AST resolves source-root modules; src layouts and ambiguous package roots may be unresolved.',
+                            'Python AST resolves source-root modules; src layouts and aliases may be unresolved; ambiguous JS/TS targets are not guessed.',
                             'JS/TS uses a lexical subset, not a full parser; dynamic imports and require are not resolved.',
                             'Counts and cycles are review evidence, not proof of poor design or runtime failure.']}

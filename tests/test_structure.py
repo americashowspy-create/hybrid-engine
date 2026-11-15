@@ -138,3 +138,44 @@ import('./b');
             result = analyze_structure(root, ['pkg/__init__.py', 'pkg/child.py'])
             self.assertEqual(result['edges'], [{'source': 'pkg/__init__.py', 'target': 'pkg/child.py', 'line': 1}])
             self.assertEqual(result['issues'], [])
+
+    def test_python_package_precedes_same_named_module(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'pkg').mkdir()
+            (root / 'pkg' / '__init__.py').write_text('value=1')
+            (root / 'pkg.py').write_text('value=2')
+            (root / 'caller.py').write_text('import pkg')
+            result = analyze_structure(root, ['pkg/__init__.py', 'pkg.py', 'caller.py'])
+            self.assertEqual(result['edges'], [{'source': 'caller.py', 'target': 'pkg/__init__.py', 'line': 1}])
+
+    def test_ambiguous_js_and_typescript_targets_are_not_guessed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'caller.ts').write_text("import {x} from './module.js';")
+            (root / 'module.js').write_text('export const x=1')
+            (root / 'module.ts').write_text('export const x=2')
+            result = analyze_structure(root, ['caller.ts', 'module.js', 'module.ts'])
+            self.assertEqual(result['edges'], [])
+            self.assertEqual(result['unresolved_imports'][0]['reason'], 'ambiguous_local_target')
+
+    def test_relative_import_beyond_known_package_is_not_a_local_edge(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('from . import b')
+            (root / 'b.py').write_text('value=1')
+            result = analyze_structure(root, ['a.py', 'b.py'])
+            self.assertEqual(result['edges'], [])
+            self.assertEqual(result['unresolved_imports'][0]['reason'], 'relative_import_without_known_package')
+
+    def test_src_layout_and_bundler_alias_limitations_remain_explicit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'src').mkdir()
+            (root / 'src' / 'a.py').write_text('import b')
+            (root / 'src' / 'b.py').write_text('value=1')
+            (root / 'a.ts').write_text("import {b} from '@/b';")
+            (root / 'b.ts').write_text('export const b=1')
+            result = analyze_structure(root, ['src/a.py', 'src/b.py', 'a.ts', 'b.ts'])
+            self.assertEqual(result['edges'], [])
+            self.assertTrue(any('src layouts and aliases' in limit for limit in result['limitations']))
