@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from .assessment import SEVERITY_ORDER, _finding, assessment_markdown
+from .assessment import SEVERITY_ORDER, _finding, assessment_markdown, markdown_text
 from .report_io import MAX_REPORT_BYTES, parse_json_bytes, relative_path
 from .source_io import read_source
 
@@ -224,4 +224,8 @@ def evidence_markdown(report: dict) -> str:
     text += '\n## External evidence claims (unverified)\n\n'
     for finding in report['findings']:
         text += f"- {finding['id']}: {len(finding['provenance'])} provenance record(s); divergent={finding['divergent_claims']}; NEEDS_VALIDATION\n"
+        for claim in finding['provenance']:
+            text += '- ' + markdown_text(f"{claim['tool']}@{claim['version']}: "
+                                         f"{claim['claimed_severity']}, {claim['claimed_verification']}; "
+                                         'source SHA NOT_VERIFIED') + '\n'
     return text

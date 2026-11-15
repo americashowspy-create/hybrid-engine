@@ -48,6 +48,8 @@ def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
                 for line in text.splitlines():
                     if re.fullmatch(r'packages:\s*(?:#.*)?', line):
                         active = True
+                    elif line.lstrip().startswith('packages:'):
+                        raise ValueError('Unsupported pnpm inline workspace declaration')
                     elif active and line.strip() and not line.startswith((' ', '\t', '#')):
                         active = False
                     elif active and line.strip() and not line.lstrip().startswith('#'):

@@ -114,3 +114,17 @@ import('./b');
             self.assertEqual(len(limited['edges']), 1)
             with patch('hybrid_engine.structure.MAX_SOURCE_BYTES', 1):
                 self.assertEqual(len(analyze_structure(root, ['a.py', 'b.py'])['incomplete']), 2)
+
+    def test_generated_markers_exclude_design_heuristics_but_preserve_security(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            text = '// @generated\n' + 'export const value = 1;\n' * 510 + 'eval(input);\n'
+            (root / 'first.ts').write_text(text)
+            (root / 'second.ts').write_text(text)
+            report = assess_project(root)
+            rules = {f['rule'] for f in report['findings']}
+            self.assertIn('JS_EVAL', rules)
+            self.assertNotIn('LARGE_SOURCE_FILE', rules)
+            self.assertNotIn('EXACT_DUPLICATE_SOURCE', rules)
+            self.assertNotIn('NO_TESTS_DETECTED', rules)
+            self.assertEqual(report['structure']['generated_files_excluded'], ['first.ts', 'second.ts'])

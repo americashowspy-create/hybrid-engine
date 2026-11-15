@@ -18,6 +18,14 @@ JS_TOKENS = re.compile(r'/\*[\s\S]*?\*/|//[^\n]*|`(?:\\[\s\S]|[^`\\])*`|'
                        r'[A-Za-z_$][\w$]*|[^\s]', re.MULTILINE)
 
 
+def is_generated(path: str, source: str) -> bool:
+    """Narrow source markers for design heuristics only; never suppress security."""
+    return ((path.endswith('database.types.ts') and 'export type Database =' in source
+             and '__InternalSupabase' in source)
+            or bool(re.search(r'^\s*(?://|#|/\*|\*)\s*(?:@generated\b|Code generated\b[^\n]*DO NOT EDIT)',
+                              source[:1024], re.MULTILINE)))
+
+
 def _js_imports(text: str):
     tokens = []
     line = 1
@@ -57,6 +65,7 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
     pending = []
     issues = []
     incomplete = []
+    generated = []
     nodes_used = 0
     for path in sorted(paths):
         try:
@@ -67,8 +76,8 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
             incomplete.append({'path': path, 'reason': 'unreadable_or_size_limit'})
             continue
         # Generated sources still receive security scanning, but not design advice.
-        if (path.endswith('database.types.ts') and 'export type Database =' in text
-                and '__InternalSupabase' in text):
+        if is_generated(path, text):
+            generated.append(path)
             continue
         local_imports = []
         branches = definitions = 0
@@ -181,7 +190,7 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                            'metrics': {'component_files': len(component)}})
     return {'files': [records[p] for p in sorted(records)],
             'edges': [{'source': a, 'target': b, 'line': n} for a, b, n in edges],
-            'issues': issues, 'incomplete': incomplete, 'ast_nodes_examined': nodes_used,
+            'issues': issues, 'generated_files_excluded': generated, 'incomplete': incomplete, 'ast_nodes_examined': nodes_used,
             'limits': {'source_bytes': MAX_SOURCE_BYTES, 'ast_nodes': MAX_NODES, 'edges': MAX_EDGES},
             'limitations': ['Local static imports only; no runtime, aliases, tsconfig paths or dependency execution.',
                             'Python AST resolves source-root modules; src layouts and ambiguous package roots may be unresolved.',

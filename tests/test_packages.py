@@ -86,3 +86,13 @@ class PackageTests(unittest.TestCase):
             self.put(root, 'apps/b/package.json', {})
             result = assess_project(root)
             self.assertEqual([f['path'] for f in result['findings'] if f['rule'] == 'MISSING_JS_LOCKFILE'], ['package.json'])
+
+    def test_inline_yaml_workspace_and_duplicate_json_keys_fail_honestly(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.put(root, 'package.json', {})
+            self.put(root, 'pnpm-workspace.yaml', 'packages: [apps/*]')
+            self.assertEqual(assess_project(root)['status'], 'INCOMPLETE')
+            (root / 'pnpm-workspace.yaml').unlink()
+            self.put(root, 'package.json', '{"workspaces":[],"workspaces":["apps/*"]}')
+            self.assertEqual(assess_project(root)['status'], 'INCOMPLETE')

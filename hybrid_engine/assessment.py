@@ -8,7 +8,7 @@ from pathlib import Path
 from .audit import SCANNABLE, SKIP_DIRS, scan
 from .db_guard import scan_database
 from .source_io import read_source, SourceReader
-from .structure import analyze_structure
+from .structure import analyze_structure, is_generated
 from .packages import analyze_packages
 from .enumeration import Enumeration, enumerate_tree
 
@@ -174,15 +174,16 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
         except (OSError, UnicodeDecodeError):
             skipped += 1
             continue
+        if is_generated(rel, source):
+            if len(source.splitlines()) > LONG_FILE_LINES and _is_generated_supabase_types(path, source):
+                generated_size_excluded += 1
+            continue
         source_count += 1
         line_count = len(source.splitlines())
         if line_count > LONG_FILE_LINES:
-            if _is_generated_supabase_types(path, source):
-                generated_size_excluded += 1
-            else:
-                results.append(_finding(
-                    "architecture", "LARGE_SOURCE_FILE", "low", "architecture",
-                    rel, 1, f"Source file has {line_count} lines; review cohesion before refactoring."))
+            results.append(_finding(
+                "architecture", "LARGE_SOURCE_FILE", "low", "architecture",
+                rel, 1, f"Source file has {line_count} lines; review cohesion before refactoring."))
         if len(content) >= DUPLICATE_MIN_BYTES:
             digest = hashlib.sha256(content).hexdigest()
             if digest in hashes:

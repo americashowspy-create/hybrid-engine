@@ -202,3 +202,15 @@ class EvidenceBridgeTests(unittest.TestCase):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
                 main(['evidence-import', '--report', str(source), '--output', str(source)])
             self.assertEqual(error.exception.code, 2)
+
+    def test_sarif_suppressions_and_malformed_json_are_explicitly_rejected(self):
+        source = sarif()
+        source['runs'][0]['results'][0]['suppressions'] = [{'kind': 'external'}]
+        with self.assertRaises(ValueError):
+            self.import_docs([source])
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'malicious.json'
+            for value in ('{"kind":1,"kind":2}', '{"x":Infinity}', '[' * 65 + '0' + ']' * 65):
+                path.write_text(value)
+                with self.assertRaises(ValueError):
+                    import_evidence([path])

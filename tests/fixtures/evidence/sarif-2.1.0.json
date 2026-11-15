@@ -1,0 +1,49 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "fixture-scanner",
+          "version": "1.0"
+        }
+      },
+      "properties": {
+        "hybrid_scope": [
+          "src/app.ts"
+        ],
+        "hybrid_environment": "fixture",
+        "hybrid_code_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "fixture/eval",
+          "level": "error",
+          "properties": {
+            "hybrid_rule": "JS_EVAL"
+          },
+          "message": {
+            "text": "Never execute this text"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/app.ts"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,14 +4,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from pathlib import Path, PurePosixPath
 
 from .assessment import DEFAULT_GUIDANCE, GUIDANCE, SEVERITY_ORDER, markdown_text
 from .core import FLOWS, GATES
-from .report_io import load_json_report as load_assessment, relative_path as _path
+from .report_io import MAX_REPORT_BYTES, load_json_report as load_assessment, relative_path as _path
 from .evidence_bridge import clean_provenance
 
-MAX_REPORT_BYTES = 8 * 1024 * 1024
 MAX_FINDINGS = 5000
 SECRET_RULES = frozenset({'PRIVATE_KEY', 'SUPABASE_SECRET', 'GITHUB_TOKEN', 'AWS_ACCESS_KEY'})
 RULE_GUIDANCE = {
@@ -189,6 +187,10 @@ def advice_markdown(report: dict) -> str:
         lines.extend([f"### {order['id']} — {order['priority']}", '',
                       f"- Rule: {order['evidence']['rule']}",
                       f"- Location: {markdown_text(order['evidence']['path'])}:{order['evidence']['line']}"])
+        if order['evidence'].get('provenance'):
+            lines.append('- External provenance: ' + markdown_text(' / '.join(
+                f"{p['tool']}@{p['version']} ({p['claimed_verification']}; source SHA NOT_VERIFIED)"
+                for p in order['evidence']['provenance'])))
         for field in ('status', 'problem', 'potential_impact', 'confidence', 'strategy', 'minimum_scope',
                       'side_effects', 'rollback', 'review_note'):
             lines.append(f"- {field}: {markdown_text(order[field])}")
