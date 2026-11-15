@@ -1,4 +1,104 @@
-# Execução incremental — Audit Intelligence e Advisor
+# Plano único e evidências — missão avançada
+
+## Estado atual
+
+Base desta missão: `8bd78e6f096584035ac67f631244446ee44963fb`.
+Branch autorizada: `feat/assessment-advisor-hardening`, mesma origem privada.
+Working tree inicial limpa e branch sincronizada; baseline 178 PASS reexecutada
+em Python 3.11.18 e 3.12.14 (3.12 em worktree detached da base).
+AGENTS, arquitetura, assessment, plano, DB Guard, workflows e segurança relidos;
+Issues #13/#14 e roadmap da branch separada consultados novamente.
+
+| Frente | Entrega e critério verificado |
+| --- | --- |
+| A | Enumeração compartilhada limitada por entradas/diretórios/profundidade, razões e contagens, sem contagem posterior da árvore; testes adversariais |
+| B | Grafo local Python/JS/TS, SCCs, métricas de controle/fan-out, evidências no assessment e ordens no Advisor; sem alegações semânticas não demonstradas |
+| C | npm/pnpm/Yarn/Bun, workspace owner/lockfile herdado, manifests independentes, conflitos e incertezas explícitas |
+| D | Contrato JSON v1 + SARIF 2.1.0 restrito offline, proveniência/dedup/divergência, texto livre omitido, Advisor bloqueado para revisão independente |
+| E | Cache limitado por assessment, mesmas regras/resultados com/sem cache, redução de leituras medida |
+
+Primeiras versões funcionais das cinco frentes concluídas; cobertura semântica
+ampla e adaptadores externos continuam pendentes. Contratos em ASSESSMENT.md.
+
+## Validação final
+
+- 229/229 PASS em Python 3.11.18 e 3.12.14, zero falhas; +51 testes sobre a base.
+- compileall hybrid_engine tests PASS em ambas as versões; git diff --check PASS.
+- CLI --help, assess JSON/Markdown, evidence-import JSON/Markdown e
+  evidence-import → advise executados; fixtures sintéticos versionados em tests/fixtures/evidence.
+- Relatórios de assessment do mesmo Hybrid e importação das mesmas fixtures
+  idênticos em Python 3.11/3.12. Não garante equivalência para sintaxe exclusiva de 3.12.
+- CI hospedado CI_NOT_VERIFIED; testes de produção, ferramentas externas e pentest NOT_RUN.
+- Mensagem argparse de combinação inválida de --bundle/--order pertence a teste
+  negativo existente e não é uma falha da suíte.
+
+Comparação com scanner da base 8bd78e6 sobre os mesmos checkouts:
+
+| Piloto | Antes | Depois | Cobertura |
+| --- | --- | --- | --- |
+| Hybrid (árvore desenvolvida) | 7 | 12 | BOUNDED_COMPLETE |
+| Radar | 12 | 12 | BOUNDED_COMPLETE |
+
+Hybrid preservou 5 SUPABASE_SECRET e 2 PUBLIC_PRIVILEGED_CONFIG em testes.
+Adicionou CONCENTRATED_CONTROL_FLOW em assessment/evidence_bridge/github_adapter/
+taskboard e HIGH_LOCAL_FAN_OUT na CLI (16 dependências locais). São indicadores,
+incluindo o próprio código novo, não vulnerabilidades ou defeitos comprovados.
+Radar preservou 6 suspeitas SQL, 1 lockfile, 1 sink HTML, 3 fontes longas e 1
+indicador de testes ausentes. Não foram suprimidos alertas. HEAD do Radar continua
+68c0069b0008e4829ce06011acdd91190057b839 e working tree limpa.
+Relatórios detalhados e medições permanecem em work/evidence, sem publicar
+metadados dos pilotos fora de seu escopo autorizado.
+
+## Commits desta missão e publicação
+
+1. 57c4b88 — orçamento global compartilhado.
+2. e1ff224 — evidência estrutural/imports e Advisor.
+3. 00466a2 — gerenciadores de pacotes/workspaces.
+4. 27019ce — Evidence Bridge e JSON estrito compartilhado.
+5. cc5ab19 — cache limitado e medição.
+6. cfd78e8 — arquivos gerados e entradas ambíguas.
+7. d199eb7 — remover falso autociclo implícito em inicializadores de pacote.
+8. 3458d8d — proveniência de regra e distinção de snapshots/escopos no Advisor.
+9. Commit desta atualização — documentação final e evidências.
+
+Antes de publicar, fetch e inspeção confirmaram apenas ci.yml nos workflows,
+com push main e PR para main; nenhum workflow alterado. Consulta confirmou nenhuma
+PR aberta para a branch. Push autorizado somente para a branch existente, sem
+force push, abertura de PR ou merge. HEAD publicado é confirmado no relatório
+final de entrega e na referência remota, sem inventar SHA dentro deste commit.
+
+## Decisões, riscos e continuidade
+
+Sem dependências runtime novas: AST/JSON/SCC usam biblioteca padrão. Não há
+exigência de Docker, Codex, modelo pago ou scanners instalados. Assessment v1
+recebeu campos aditivos; o planejador e os controles de execução foram reutilizados.
+Foi corrigida uma falsa dependência de inicializador de pacote consigo mesmo e
+um conflito indevido no Advisor entre a mesma localização em SHAs/escopos distintos.
+
+Próximo incremento recomendado: ampliar resolução verificável de imports
+(layouts src e aliases configurados) e semântica de globs de workspace, mantendo
+casos não suportados explícitos. Depois, adaptadores externos opcionais com
+proveniência autenticada/revisada; sem promoção automática de confiança.
+
+Limitações deliberadas: JS lexical não é parser completo; contagens não provam
+responsabilidades de negócio ou má arquitetura; YAML limitado; SARIF não aceita
+muitos recursos avançados. Claims SHA são comparados, não autenticados; metadados
+podem conter segredos não reconhecíveis; revisão de relatórios segue necessária.
+Enumeração não tem timeout de syscalls e cache não fornece snapshot atômico.
+Detalhes e limites de recursos em ASSESSMENT.md.
+
+Main/produção/Radar/banco sem alterações. Sem migrations, rotação, deploy, release,
+pentest, instalação de scanners, CI hospedado solicitado ou serviços pagos.
+Rollback: abandonar a branch para voltar à main; se incorporada mediante revisão
+separada, reverter commits desta missão na ordem inversa, sem alterações de dados.
+
+---
+
+## Histórico da missão anterior (até 8bd78e6)
+
+As pendências e estados abaixo registram a execução anterior; o estado atual e
+os resultados da nova missão estão acima. Há um único plano, sem tracker paralelo.
+
 
 ## Estado e contexto
 

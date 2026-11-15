@@ -178,6 +178,14 @@ python3 -m compileall -q hybrid_engine tests
 python3 -m hybrid_engine --help
 ```
 
+## Desenvolvimento experimental: assessment e evidências
+
+Na branch `feat/assessment-advisor-hardening`, `assess` combina scanners offline,
+imports/estrutura local e package managers/workspaces. `advise --report` gera ordens
+de revisão sem aplicar patches; `evidence-import --report` recebe JSON/SARIF offline
+sem executar ferramentas. Essa branch não é uma release v0.10 homologada.
+[Contratos, exemplos e limites](docs/ASSESSMENT.md) · [Evidências](docs/EXECUTION_PLAN.md).
+
 ## 🤝 Quer testar com amigos?
 
 O projeto está **privado neste momento**. Pessoas convidadas ao repositório podem ler a documentação e testar em seus **próprios projetos**, com suas próprias permissões GitHub. Dar acesso ao framework **não exige** dar acesso aos outros repositórios do proprietário.

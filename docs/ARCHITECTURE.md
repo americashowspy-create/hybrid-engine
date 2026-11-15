@@ -48,3 +48,21 @@ arbitrary shell execution is included.
 independentes de fornecedor e reutiliza `core.FLOWS`/`GATES` (review/audit-fix).
 Não chama executores, modelos ou APIs. A vinculação a SHAs continua pertencendo
 ao fluxo existente de handoff, sem um segundo mecanismo de aplicação.
+
+## Evolução avançada da branch de desenvolvimento
+
+- `enumeration`: inventário iterativo e determinístico com orçamento global,
+  compartilhado por assessment/audit/DB Guard; contagens e lacunas explícitas.
+- `source_io.SourceReader`: cache de bytes limitado a 8 MiB por assessment; cada
+  consumidor mantém seu limite de tamanho, sem persistir código ou AST.
+- `structure`: AST Python padrão e subconjunto lexical JS/TS para grafo local,
+  componentes fortemente conectados e métricas observadas, sem execução de imports.
+- `packages`: manifests/workspaces/lockfiles com herança contextual e parsing limitado.
+- `report_io`: fronteira comum de JSON estrito e caminhos relativos.
+- `evidence_bridge`: JSON nativo v1/SARIF 2.1.0 limitado para assessment v1, claims e
+  proveniência preservados; não autentica ferramentas nem confirma vulnerabilidades.
+
+Não foi criado segundo planejador/gerenciador de risco. Advisor continua usando
+FLOWS/GATES existentes e exige vinculação posterior aos SHAs do fluxo de execução.
+Novos campos são aditivos ao assessment schema v1; dependências runtime seguem
+exclusivamente na biblioteca padrão Python 3.11+. Contratos e limites em ASSESSMENT.md.

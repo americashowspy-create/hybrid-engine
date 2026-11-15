@@ -1,141 +1,194 @@
-# Audit Intelligence — v0.10 em desenvolvimento
+# Audit Intelligence, System Design e Evidence Bridge — desenvolvimento
 
-A primeira entrega do Audit Intelligence é uma **avaliação estática e offline** de um projeto, com achados normalizados e recomendações revisáveis. Ela não altera código, não executa scripts, não acessa a internet nem consulta bancos de dados.
+Branch: `feat/assessment-advisor-hardening`; a main continua v0.9.0.
+Implementação experimental, offline e independente de agente/LLM. Não é pentest,
+certificação de segurança ou verificação de comportamento em produção.
 
-> **Estado:** implementação experimental na branch feat/audit-intelligence-v010. A versão oficial da main ainda é v0.9.0. Nenhuma publicação v0.10 está homologada.
-
-## Como experimentar em um checkout da branch
-
-Python 3.11+ na raiz do repositório:
-
-~~~bash
-python3.11 -m hybrid_engine assess --target /caminho/do/projeto
-python3.11 -m hybrid_engine assess --target /caminho/do/projeto --format markdown
-python3.11 -m hybrid_engine assess --target /caminho/do/projeto --format json --output /tmp/assessment.json
-python3.11 -m unittest discover -s tests -q
-~~~
-
-O programa imprime o relatório por padrão. Somente escreve um arquivo de relatório quando o usuário informa explicitamente a opção `--output`. Nenhum arquivo `.hybrid/` é criado pelo comando assess.
-
-## Cobertura implementada na fase 1
-
-O relatório combina três fontes:
-
-1. **Scanner geral existente:** sinais de stack e padrões estáticos de segurança.
-2. **DB Guard v0.9:** riscos heurísticos em SQL, Firebase, Prisma e configuração; mantém as sete áreas de verificação real como `NOT_VERIFIED`.
-3. **Arquitetura/qualidade de código:** arquivos-fonte acima de 500 linhas (exceto tipos Supabase reconhecidos por assinatura de conteúdo como gerados), duplicações byte a byte de arquivos-fonte de pelo menos 1024 bytes, ausência de testes com nomes convencionais nos arquivos elegíveis, e ausência de lockfile reconhecido quando existe `package.json` na raiz.
-
-Essas regras são **indicadores limitados**, não conclusões sobre boa ou má arquitetura. Por exemplo, dois arquivos iguais podem ser intencionais, um arquivo longo pode ser bem organizado, testes podem usar nomes diferentes e um projeto pode não adotar lockfile por decisão explícita.
-
-## Contrato da avaliação
-
-- `schema_version`, `mode=static_read_only`, `status`, `target`, `stack`.
-- `coverage`: contagem de arquivos, leitura incompleta, arquivos ignorados e truncamentos, incluindo a cobertura independente do DB Guard.
-- `findings`: IDs estáveis, origem, categoria, severidade, localização, confiança `suspected`, contexto `test_source` ou `application_source` e mensagem sem snippets. Uma correspondência em arquivos de testes **permanece visível e com sua severidade original**, pois credenciais verdadeiras também podem acabar em testes.
-- `summary`: contagens separadas de achados em código de aplicação e código de teste; nenhuma contagem implica que achados de testes são falsos.
-- `coverage.generated_types_excluded_from_size_rule`: número de tipos Supabase com assinatura reconhecida dispensados **apenas** da heurística de arquivo longo; demais regras continuam ativas.
-- `recommendations`: prioridade **de revisão**, justificativa, ação sugerida, aceite, validação e rollback. O status é sempre `PROPOSED_NOT_APPLIED`; nenhuma recomendação é executada.
-- `verification`: testes do alvo `NOT_RUN`, verificações de banco real `NOT_VERIFIED` e análise de runtime `NOT_VERIFIED`.
-- `limitations`: explica lacunas e impedimentos.
-
-Os achados observados no primeiro piloto do próprio Hybrid Engine estão em testes com tokens deliberadamente sintéticos. A classificação contextual ajuda na triagem, **sem suprimir automaticamente achados de credenciais em testes**.
-
-O relatório marca `INCOMPLETE` quando a cobertura é truncada ou algum arquivo relevante não pôde ser lido. `NO_FINDINGS` **não** significa que o projeto está seguro ou sem problemas.
-
-## Regras operacionais
-
-- Sem execução de código ou testes do projeto avaliado, rede, SQL, migrações ou conexão de banco.
-- Arquivos `.env` reais não são abertos pelo novo scanner geral; o DB Guard só examina variáveis em modelos de ambiente, nunca valores nos relatórios.
-- Ignora symlinks, diretórios típicos de dependências/artefatos e binários; analisa até 250 arquivos elegíveis, no máximo 256 KiB cada, respeitando também os limites independentes do DB Guard.
-- Não inclui valores de credenciais nem trechos de código nos relatórios. Pacotes de fontes para agentes externos continuam sujeitos às regras de privacidade próprias.
-- Não cria branches, commits, pull requests, deploys nem modifica produção.
-
-## Critérios de homologação antes do lançamento
-
-- Regressão completa dos 135 testes da v0.9 e aprovação dos testes novos na versão Python 3.11. A primeira implementação registrou **147/147 PASS** no Mac em 15/11/2026; as regressões adicionais de classificação contextual **ainda exigem reexecução** antes da PR.
-- Inspeção de arquivos alterados, compilação e testes de CLI.
-- Piloto no Radar Artístico em checkout isolado, sem mudanças no projeto.
-- Verificar que não houve vazamento de valores de ambiente e que resultados incompletos são identificados corretamente.
-- Registrar `CI_NOT_VERIFIED` enquanto o GitHub Actions permanecer bloqueado por faturamento.
-
-## Fora desta fase
-
-Análise semântica profunda de AST e arquitetura, verificação efetiva de RLS/GRANT, custos reais, performance em runtime, integração com modelo de IA, geração automática de patches, aplicação de refatorações e auditoria contínua.
-
-A **fase 2** usará o relatório estável para o AI Implementation Advisor; System Design / HYBRID REFACTOR e monitoramento ficarão em fases posteriores.
-
-Escopo e critérios detalhados: [Issue #13](https://github.com/americashowspy-create/hybrid-engine/issues/13).
-
-## Incremento de robustez e Advisor (branch de desenvolvimento)
-
-A leitura agora é limitada também no momento de abrir o arquivo e usa descritores
-relativos ao diretório, sem seguir symlinks em componentes intermediários.
-Arquivos especiais (incluindo FIFOs) não são lidos; erros ao percorrer diretórios
-contam como cobertura incompleta. A implementação exige suporte POSIX a `dir_fd`
-e `O_NOFOLLOW`; em plataformas sem esses recursos os arquivos ficam ignorados e a
-cobertura é `INCOMPLETE`, em vez de enfraquecer silenciosamente a leitura.
-A raiz informada é resolvida explicitamente; o scanner não é uma sandbox contra
-um adversário com controle do processo/sistema de arquivos inteiro.
-
-`REACT_HTML_INJECTION` identifica um ponto de renderização de HTML. HTML estático
-confiável e HTML sanitizado continuam como pistas de revisão; o scanner não faz
-análise de fluxo, não valida sanitizadores e não declara exploração comprovada.
-A recomendação pede rastrear origem, interpolação e fronteira de confiança.
-
-A classificação de testes inclui `.test.jsx`, `.spec.jsx` e `_test.go`.
-Um arquivo JSON de configuração chamado `test_*` não comprova existência de testes.
-Diretórios e symlinks com nome de lockfile não contam como lockfile regular.
-Nomes de arquivo são escapados no Markdown; continuam sendo metadados potencialmente
-sensíveis. Não compartilhe relatórios sem revisar caminhos e escopo.
-
-### AI Implementation Advisor
+## Uso
 
 ~~~bash
 python3 -m hybrid_engine assess --target /projeto --output /tmp/assessment.json
-python3 -m hybrid_engine advise --report /tmp/assessment.json
+python3 -m hybrid_engine assess --target /projeto --format markdown
 python3 -m hybrid_engine advise --report /tmp/assessment.json --format markdown --output /tmp/advice.md
 ~~~
 
-O Advisor é determinístico, offline e não usa LLM nem dependências novas. Consome
-assessment `schema_version=1`, verifica classificações, IDs e caminhos relativos,
-deduplica achados idênticos e rejeita duplicatas conflitantes. Rejeita JSON com
-chaves repetidas, constantes não finitas, mais de 64 níveis, mais de 8 MiB ou mais
-de 5000 achados. Não aceita symlink/FIFO como entrada. Não sobrescreve o próprio
-relatório de entrada. Saída só é gravada mediante `--output`.
+Por padrão, assess/advise imprimem relatórios e não escrevem na árvore alvo.
+`--output` pede explicitamente uma gravação; não aponta para arquivos do piloto.
+Não executam código/testes/scripts, carregam .env reais, instalam dependências,
+conectam a banco ou acessam rede. Comandos antigos e assessment schema v1 mantidos.
+Nenhuma pasta `.hybrid/` é criada por esses comandos.
 
-Cada ordem inclui evidência estrutural, confiança, prioridade de revisão, impacto
-potencial, estratégia por regra, escopo mínimo, pré-requisitos, aceite, testes,
-efeitos colaterais, rollback, bloqueios e fluxo existente. Textos arbitrários do
-relatório (mensagens, recomendações e instruções embutidas) não são encaminhados.
-Regras desconhecidas exigem diagnóstico manual (`BLOCKED`). Cobertura incompleta
-bloqueia a passagem para implementação, mesmo quando não existem achados.
+## Cobertura e limites
 
-As ordens são propostas de investigação/implementação (`PROPOSED_NOT_APPLIED`),
-não patches. `ready_for_proposal=false` é intencional: o relatório não garante
-snapshot ou autenticidade. Antes de uma implementação, reutilize o fluxo de
-escopo exato existente e obtenha SHA base e blob SHA atuais. Não passe o JSON do
-Advisor diretamente para `gh-execute`: ele não é um manifesto desse executor.
+A enumeração compartilhada examina no máximo 20000 entradas, 1000 diretórios e
+profundidade 64, incluindo entradas inelegíveis. Ignora diretórios de artefatos e
+symlinks antes de descentes. A travessia é iterativa, ordenada por diretório; não
+faz segunda varredura para contar o restante. Um diretório que consome o orçamento
+restante é descartado inteiro para evitar um subconjunto arbitrário dependente da
+ordem do filesystem. Atingir exatamente o limite de entradas também é truncamento
+conservador. Diretórios já completados permanecem no relatório.
 
-### System Design / proposta de refatoração
+`coverage.enumeration` registra limites, entradas/diretórios examinados, exclusões
+intencionais, arquivos especiais, erros, entradas descartadas e motivos
+`entry_budget`, `directory_budget`, `depth_budget`. Quantidade não examinada é
+`null` quando desconhecida: nunca estimada por uma travessia adicional.
+Falhas, especiais e truncamento tornam a cobertura incompleta. Symlinks e
+diretórios de artefatos são exclusões intencionais, não evidência de segurança.
+`BOUNDED_COMPLETE` significa apenas conclusão do escopo elegível delimitado.
 
-A primeira entrega reaproveita os achados `LARGE_SOURCE_FILE` e
-`EXACT_DUPLICATE_SOURCE` e o fluxo `review`, com avaliação de custo-benefício,
-interfaces/imports, aceite e rollback. Não cria outro planejador e não adiciona
-um comando HYBRID REFACTOR. Não há AST, grafo de dependências, análise de acoplamento
-ou detecção semântica de duplicação. Tamanho e igualdade de bytes são apenas
-indicadores; nenhuma refatoração é aplicada ao projeto avaliado.
+O assessment analisa até 250 fontes elegíveis de 256 KiB, com limites independentes
+do DB Guard (250 arquivos/500 achados) e scanner geral (2000 achados).
+Scanners separados também usam o orçamento global. A leitura por descritores
+relativos impede seguir symlinks em componentes intermediários; arquivos especiais
+não são abertos para processamento. Requer POSIX com `dir_fd`/`O_NOFOLLOW`;
+plataformas sem suporte ficam incompletas, sem fallback menos seguro.
+Filesystem lento/remoto pode bloquear operações individuais: os orçamentos de
+contagem não são timeouts, nem sandbox contra controle do processo/sistema inteiro.
 
-O Evidence Bridge permanece pendente: o contrato interno foi reforçado primeiro.
-Não há importador SARIF, adaptador externo, validação dinâmica nem pentest.
+Uma enumeração por assessment e cache temporário de bytes de até 8 MiB reduzem
+releituras. Os limites menores de cada consumidor continuam valendo. Cache não é
+persistido e não garante snapshot atômico de arquivos modificados durante o scan.
+`processing` contém contagens de leituras/cache, nunca conteúdo de fontes.
 
-O scanner geral também limita sua saída a 2000 achados; um excedente produz
-`coverage.truncated=true` e `INCOMPLETE`. O DB Guard conserva seu limite independente
-de 500 achados. `vendor/`, `target/` e `.cache/` ficam excluídos consistentemente dos
-scanners. A enumeração do filesystem ainda depende de `os.walk` e não possui timeout
-ou orçamento global de entradas: projetos com milhões de arquivos ignorados podem
-ser lentos. Não há promessa de imunidade a exaustão de recursos nesse cenário.
+## Achados e contexto
 
-Duplicações exatas preservam `related_paths` como evidência estrutural, para que o
-Advisor inclua ambos os arquivos prováveis sem incorporar seus nomes em mensagens.
-IDs permanecem baseados em origem/regra/caminho/linha: são determinísticos no mesmo
-snapshot, mas uma inserção de linhas pode mudá-los. Não são identidade semântica.
+Scanner geral e DB Guard preservam severidade e confiança `suspected`.
+`context=test_source|application_source` e `summary` auxiliam triagem sem descartar
+possíveis segredos reais em testes. Relatórios não incluem valores correspondentes
+nem snippets. Caminhos são metadados potencialmente sensíveis; revise antes de compartilhar.
+Markdown escapa nomes de arquivos. IDs por origem/regra/caminho/linha são estáveis
+no mesmo snapshot, mas não permanecem iguais após deslocamentos de linhas.
+
+`REACT_HTML_INJECTION` é uma pista de sink HTML: pede rastrear origem/interpolação/
+sanitização. HTML estático confiável pode dispensar correção. A análise não comprova
+exploração nem valida sanitizadores. Policies SQL abertas seguem suspeitas: papéis,
+GRANT, finalidade e isolamento efetivo exigem verificação separada autorizada.
+
+## System Design Intelligence
+
+`structure` apresenta arquivos analisados, método, definições, ramificações, fan-in/
+fan-out local, arestas de imports, exclusões de código gerado e lacunas. Python usa
+AST da biblioteca padrão sem importar o alvo. JS/TS usa um subconjunto lexical de
+import/export estático relativo, descartando comentários, strings e templates.
+
+- `LOCAL_IMPORT_CYCLE`: componente fortemente conectado no grafo observado, com
+  arquivos envolvidos e contagem; pode ser intencional e exige revisão.
+- `HIGH_LOCAL_FAN_OUT`: pelo menos dez dependências locais resolvidas; uma composição
+  central pode ser correta, não se deve fragmentá-la automaticamente.
+- `CONCENTRATED_CONTROL_FLOW`: pelo menos trinta ramificações em cinco definições
+  Python; não é um score de qualidade ou uma inferência de responsabilidade de negócio.
+- `LARGE_SOURCE_FILE`: mais de 500 linhas, contextual e sem conclusão automática.
+- `EXACT_DUPLICATE_SOURCE`: igualdade de bytes em fontes de pelo menos 1024 bytes;
+  `related_paths` preserva o outro arquivo, sem assumir que consolidar seja desejável.
+- `NO_TESTS_DETECTED`: ausência de nomes convencionais no escopo, nunca prova de
+  ausência de estratégia de testes. JSON `test_*` não equivale a teste executável.
+
+Limites estruturais: 128 KiB por fonte, 50000 nós AST globais, 2000 arestas.
+Parsing/limites/leitura impossíveis são registrados e tornam assessment incompleto.
+Não resolve imports dinâmicos, require, aliases tsconfig/bundler, pacotes externos
+ou todas as raízes/layouts src de Python. JS lexical não é parser semântico completo;
+Python 3.11 não aceita toda sintaxe de Python 3.12. Nenhuma inferência automática de
+módulos de autenticação/persistência, papéis de frontend/backend ou testabilidade.
+Componentes extensos mostram até vinte caminhos relacionados e a contagem total.
+
+Assinatura de tipos gerados Supabase e comentários iniciais convencionais
+`@generated` / `Code generated ... DO NOT EDIT` excluem somente heurísticas de
+design, tamanho e duplicação. Não autenticam o gerador e não suprimem segurança.
+
+## Package manager e workspaces
+
+`packages` analisa até 100 package.json de 64 KiB, usando JSON estrito. Identifica
+packageManager npm/pnpm/Yarn/Bun, lockfiles regulares presentes e workspace owner.
+Workspaces package.json (lista ou objeto packages) e lista packages do
+pnpm-workspace.yaml permitem herdar lockfile/manager do proprietário mais próximo.
+Manifests fora de workspaces continuam independentes. Uma ausência de lockfile
+compartilhado é reportada no proprietário, sem repetir em cada filho.
+
+`MISSING_JS_LOCKFILE`, `CONFLICTING_JS_LOCKFILES` e
+`PACKAGE_MANAGER_LOCK_MISMATCH` são suspeitas de revisão. Não lê conteúdo de
+lockfiles para provar frescor/validade, nem executa installs. Nomes de diretórios e
+symlinks não contam como lockfile. Yarn/pnpm YAML completo, anchors, listas inline,
+exclusões e managers personalizados não são suportados: lacunas ficam explícitas,
+com cobertura incompleta em vez de inferência silenciosa. Globs usam fnmatch sobre
+caminhos relativos; diferenças de semântica com ferramentas reais exigem revisão.
+
+## Advisor determinístico
+
+Valida assessment v1, classificações, IDs, caminhos e métricas estruturais; deduplica
+achados idênticos e rejeita conflitos. Até 5000 achados; JSON até 8 MiB/profundidade 64,
+sem chaves repetidas/constantes não finitas. Não aceita symlink/FIFO na entrada nem
+sobrescreve o relatório de entrada. Textos arbitrários de mensagens e recomendações
+não são encaminhados como instruções.
+
+Ordens incluem problema/evidência, impacto potencial, confiança, prioridade de
+revisão, arquivos prováveis, pré-requisitos, estratégia por regra, escopo mínimo,
+aceite, testes, efeitos colaterais, rollback e bloqueios. Arquitetura reutiliza
+`core.FLOWS['review']`; demais propostas usam o fluxo existente audit-fix.
+Relatório incompleto, regra desconhecida ou evidência externa sem revisão bloqueiam
+implementação. Nenhuma ordem é aplicada automaticamente.
+
+`ready_for_proposal=false`: assessment não fornece snapshot autenticado. Obtenha
+SHA base e blobs atuais pelo fluxo existente de escopo exato e revise um change-set
+separadamente. JSON do Advisor não é um manifesto de gh-execute. Não há novo comando
+HYBRID REFACTOR, segundo planejador ou aplicação de refatorações.
+
+## Evidence Bridge — somente importação offline
+
+~~~bash
+python3 -m hybrid_engine evidence-import --report tests/fixtures/evidence/native-v1.json --report tests/fixtures/evidence/sarif-2.1.0.json --output /tmp/evidence.json
+python3 -m hybrid_engine evidence-import --report /tmp/tool-report.json --format markdown
+python3 -m hybrid_engine advise --report /tmp/evidence.json
+~~~
+
+Aceita um a oito relatórios JSON (até 8 MiB cada), 2000 resultados globais e
+profundidade 64. Os mesmos controles de leitura/parser do Advisor são reutilizados.
+Rejeita formatos malformados, caminhos externos e scope incompatível. Não baixa
+artefatos, resolve referências externas, interpreta instruções ou executa comandos.
+Fixtures são exclusivamente sintéticos e não exigem conta, scanner ou chave.
+
+Contrato nativo `kind=external_evidence`, `schema_version=1`:
+
+- tool: name/version identificadores limitados.
+- target: code_sha opcional (40 hex minúsculos), environment (offline/fixture/staging/
+  production/unknown), scope com arquivos relativos exatos.
+- coverage.status: COMPLETE/INCOMPLETE/UNKNOWN, alegado pela ferramenta.
+- findings: rule, path, line, severity (critical/high/medium/low), verification opcional
+  e mapped_rule opcional para mapear uma regra Hybrid existente.
+
+Estados declarados aceitos: SUSPECTED, NEEDS_VALIDATION, CONFIRMED_IN_ISOLATION,
+CONFIRMED_IN_STAGING, FALSE_POSITIVE_REVIEWED e NOT_TESTED. Permanecem claims:
+resultado normalizado é sempre suspected/NEEDS_VALIDATION. Um falso positivo
+alegado não elimina o achado; uma confirmação alegada não confirma exploração.
+
+A proveniência guarda ferramenta/versão, SHA256 do relatório, SHA declarado,
+ambiente, severidade e verificação declaradas. `--expected-sha` compara somente a
+alegação fornecida; não verifica bytes do código ou autoria. Divergência torna
+cobertura incompleta. `source_sha_verification` continua NOT_VERIFIED mesmo quando
+coincide. Dedup por regra mapeada/local/linha/SHA/ambiente/escopo preserva proveniências
+e divergências; sem mapeamento explícito, regras de ferramentas distintas ficam
+separadas. Não tenta adivinhar causa comum.
+
+Mensagens livres, snippets, comandos, anexos e URLs são OMITIDOS, em vez de tentar
+redigir parcialmente um texto arbitrário. Identificadores/caminhos com padrões
+reconhecíveis de credencial são rejeitados. Isso reduz vazamento, mas não detecta
+todo segredo inventado em metadados: revise relatórios antes de compartilhá-los.
+
+SARIF: somente 2.1.0, tool.driver.name/version, results com ruleId/level e uma
+physicalLocation por resultado, URI relativa literal e startLine positivo.
+Níveis error/warning/note/none mapeiam high/medium/low/low. Propriedades opcionais
+run.properties.hybrid_scope/hybrid_code_sha/hybrid_environment e
+result.properties.hybrid_rule têm o mesmo contrato nativo. Sem escopo exato ou
+invocations.executionSuccessful=true declarados, cobertura fica INCOMPLETE.
+URIs absolutas/remotas, uriBaseId, artifact index, múltiplas locations e suppressions
+não são suportados; use o contrato nativo para preservar claims de falso positivo.
+
+Saída consolidada reutiliza assessment v1; Advisor aceita proveniência estruturada
+e bloqueia a execução até revisão independente. Não implementa adaptadores de
+Cloudflare/Codex Security/Strix/Supabase, scanners, validação dinâmica ou pentest.
+Nenhuma dependência, serviço pago, Docker ou modelo é obrigatório.
+
+## Evidência e continuidade
+
+Consulte [EXECUTION_PLAN.md](EXECUTION_PLAN.md) para testes realmente executados,
+comparações dos pilotos, medições, commits e limitações remanescentes.
+CI hospedado continua CI_NOT_VERIFIED, separado dos testes locais.
