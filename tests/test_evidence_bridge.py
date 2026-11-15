@@ -214,3 +214,19 @@ class EvidenceBridgeTests(unittest.TestCase):
                 path.write_text(value)
                 with self.assertRaises(ValueError):
                     import_evidence([path])
+
+    def test_advisor_preserves_distinct_source_bindings_and_external_rules(self):
+        first, second = native(), native()
+        second['target']['code_sha'] = 'b' * 40
+        report = self.import_docs([first, second])
+        work = advise(report)
+        self.assertEqual(work['status'], 'BLOCKED')
+        self.assertEqual(len(work['work_orders']), 2)
+        self.assertEqual(work['work_orders'][0]['evidence']['evidence_scope'], ['src/app.ts'])
+        first['findings'][0].pop('mapped_rule')
+        second = copy.deepcopy(first)
+        second['findings'][0]['rule'] = 'different-rule'
+        work = advise(self.import_docs([first, second]))
+        self.assertEqual(len(work['work_orders']), 2)
+        self.assertEqual({o['evidence']['provenance'][0]['external_rule'] for o in work['work_orders']},
+                         {'fixture/eval', 'different-rule'})

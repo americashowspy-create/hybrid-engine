@@ -56,6 +56,7 @@ def clean_provenance(items):
         if not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest):
             raise ValueError('Invalid report digest')
         cleaned.append({'tool': _identifier(item.get('tool')), 'version': _identifier(item.get('version')),
+                        'external_rule': _identifier(item.get('external_rule', 'unknown')),
                         'report_sha256': digest, 'claimed_code_sha': _sha(item.get('claimed_code_sha')),
                         'claimed_verification': claim, 'claimed_severity': severity,
                         'environment': item['environment'], 'sha_match': item['sha_match']})
@@ -184,8 +185,9 @@ def _import_evidence(paths, expected_sha):
                 item['id'] = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
                 item['severity'] = min((item['severity'], severity), key=SEVERITY_ORDER.__getitem__)
                 item['verification_status'] = 'NEEDS_VALIDATION'
+                item['evidence_scope'] = scope
                 item.setdefault('provenance', []).append({'tool': tool_name, 'version': version,
-                    'report_sha256': digest, 'claimed_code_sha': code_sha,
+                    'external_rule': rule, 'report_sha256': digest, 'claimed_code_sha': code_sha,
                     'claimed_verification': claim, 'claimed_severity': severity,
                     'environment': environment, 'sha_match': sha_match})
     findings = sorted(grouped.values(), key=lambda f: (SEVERITY_ORDER[f['severity']], f['path'], f['line'], f['rule'], f['id']))

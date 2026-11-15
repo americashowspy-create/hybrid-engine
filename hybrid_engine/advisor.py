@@ -74,6 +74,10 @@ def _validate(report: dict) -> tuple[list[dict], str]:
                                           'category', 'context', 'path', 'line')}
         if item['source'] == 'evidence_bridge':
             normalized['provenance'] = [json.loads(value) for value in clean_provenance(item.get('provenance'))]
+            scope = item.get('evidence_scope', [])
+            if not isinstance(scope, list) or len(scope) > 2000:
+                raise ValueError('Invalid imported evidence scope')
+            normalized['evidence_scope'] = sorted({_path(value) for value in scope})
         metrics = item.get('metrics', {})
         if not isinstance(metrics, dict) or any(
                 key not in {'definitions', 'branch_points', 'local_dependencies', 'component_files'}
@@ -90,6 +94,12 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         if item['id'] in seen and seen[item['id']] != normalized:
             raise ValueError('Conflicting duplicate finding ID')
         location = (item['source'], rule, path, item['line'])
+        if item['source'] == 'evidence_bridge':
+            # A path/line in two commits or scopes is not conflicting duplicate evidence.
+            bindings = sorted({json.dumps([p['claimed_code_sha'], p['environment'],
+                [p['tool'], p['external_rule']] if rule == 'EXTERNAL_SECURITY_FINDING' else None])
+                for p in normalized['provenance']})
+            location += (json.dumps([bindings, normalized['evidence_scope']], sort_keys=True),)
         if location in locations and locations[location] != normalized:
             raise ValueError('Conflicting duplicate finding location')
         seen[item['id']] = normalized
