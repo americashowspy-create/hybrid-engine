@@ -23,7 +23,7 @@ O relatório combina três fontes:
 
 1. **Scanner geral existente:** sinais de stack e padrões estáticos de segurança.
 2. **DB Guard v0.9:** riscos heurísticos em SQL, Firebase, Prisma e configuração; mantém as sete áreas de verificação real como `NOT_VERIFIED`.
-3. **Arquitetura/qualidade de código:** arquivos-fonte acima de 500 linhas, duplicações byte a byte de arquivos-fonte de pelo menos 1024 bytes, ausência de testes com nomes convencionais nos arquivos elegíveis, e ausência de lockfile reconhecido quando existe `package.json` na raiz.
+3. **Arquitetura/qualidade de código:** arquivos-fonte acima de 500 linhas (exceto tipos Supabase reconhecidos por assinatura de conteúdo como gerados), duplicações byte a byte de arquivos-fonte de pelo menos 1024 bytes, ausência de testes com nomes convencionais nos arquivos elegíveis, e ausência de lockfile reconhecido quando existe `package.json` na raiz.
 
 Essas regras são **indicadores limitados**, não conclusões sobre boa ou má arquitetura. Por exemplo, dois arquivos iguais podem ser intencionais, um arquivo longo pode ser bem organizado, testes podem usar nomes diferentes e um projeto pode não adotar lockfile por decisão explícita.
 
@@ -31,10 +31,14 @@ Essas regras são **indicadores limitados**, não conclusões sobre boa ou má a
 
 - `schema_version`, `mode=static_read_only`, `status`, `target`, `stack`.
 - `coverage`: contagem de arquivos, leitura incompleta, arquivos ignorados e truncamentos, incluindo a cobertura independente do DB Guard.
-- `findings`: IDs estáveis, origem, categoria, severidade, localização, confiança `suspected` e mensagem sem snippets.
+- `findings`: IDs estáveis, origem, categoria, severidade, localização, confiança `suspected`, contexto `test_source` ou `application_source` e mensagem sem snippets. Uma correspondência em arquivos de testes **permanece visível e com sua severidade original**, pois credenciais verdadeiras também podem acabar em testes.
+- `summary`: contagens separadas de achados em código de aplicação e código de teste; nenhuma contagem implica que achados de testes são falsos.
+- `coverage.generated_types_excluded_from_size_rule`: número de tipos Supabase com assinatura reconhecida dispensados **apenas** da heurística de arquivo longo; demais regras continuam ativas.
 - `recommendations`: prioridade **de revisão**, justificativa, ação sugerida, aceite, validação e rollback. O status é sempre `PROPOSED_NOT_APPLIED`; nenhuma recomendação é executada.
 - `verification`: testes do alvo `NOT_RUN`, verificações de banco real `NOT_VERIFIED` e análise de runtime `NOT_VERIFIED`.
 - `limitations`: explica lacunas e impedimentos.
+
+Os achados observados no primeiro piloto do próprio Hybrid Engine estão em testes com tokens deliberadamente sintéticos. A classificação contextual ajuda na triagem, **sem suprimir automaticamente achados de credenciais em testes**.
 
 O relatório marca `INCOMPLETE` quando a cobertura é truncada ou algum arquivo relevante não pôde ser lido. `NO_FINDINGS` **não** significa que o projeto está seguro ou sem problemas.
 
@@ -48,7 +52,7 @@ O relatório marca `INCOMPLETE` quando a cobertura é truncada ou algum arquivo 
 
 ## Critérios de homologação antes do lançamento
 
-- Regressão completa dos 135 testes da v0.9 e aprovação dos testes novos na versão Python 3.11.
+- Regressão completa dos 135 testes da v0.9 e aprovação dos testes novos na versão Python 3.11. A primeira implementação registrou **147/147 PASS** no Mac em 15/11/2026; as regressões adicionais de classificação contextual **ainda exigem reexecução** antes da PR.
 - Inspeção de arquivos alterados, compilação e testes de CLI.
 - Piloto no Radar Artístico em checkout isolado, sem mudanças no projeto.
 - Verificar que não houve vazamento de valores de ambiente e que resultados incompletos são identificados corretamente.
