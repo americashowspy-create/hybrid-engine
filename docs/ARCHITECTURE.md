@@ -39,3 +39,12 @@ the actual source patch and tests. `gh-execute` rejects stale or mismatched
 manifests and, only with explicit opt-in, opens a draft PR through the GitHub
 adapter. No LLM API dependency, token in the chat, automatic merge, deploy or
 arbitrary shell execution is included.
+
+## Assessment e Advisor em desenvolvimento
+
+`assessment` combina os scanners existentes com heurísticas arquiteturais.
+`source_io` centraliza leitura limitada de arquivos regulares por descritores.
+`advisor` transforma evidência estrutural de assessment v1 em propostas
+independentes de fornecedor e reutiliza `core.FLOWS`/`GATES` (review/audit-fix).
+Não chama executores, modelos ou APIs. A vinculação a SHAs continua pertencendo
+ao fluxo existente de handoff, sem um segundo mecanismo de aplicação.

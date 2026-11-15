@@ -9,6 +9,7 @@ from . import __version__
 from .audit import scan
 from .db_guard import scan_database
 from .assessment import assess_project, assessment_markdown
+from .advisor import advise, advice_markdown, load_assessment
 from .auto_executor import run_auto
 from .agent_bridge import prepare, submit
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
@@ -73,6 +74,11 @@ def main(argv: list[str] | None = None) -> int:
     assess_parser.add_argument("--target", type=Path, default=Path("."))
     assess_parser.add_argument("--output", type=Path, help="Optional explicit report output path")
     assess_parser.add_argument("--format", choices=("json", "markdown"), default="json")
+
+    advisor = sub.add_parser("advise", help="Offline implementation review orders from an assessment")
+    advisor.add_argument("--report", type=Path, required=True)
+    advisor.add_argument("--output", type=Path)
+    advisor.add_argument("--format", choices=("json", "markdown"), default="json")
 
     gh_audit = sub.add_parser("gh-audit", help="Read-only audit of an accessible GitHub repository")
     gh_audit.add_argument("--repo", required=True, help="owner/name")
@@ -217,6 +223,21 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             return 0
         except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            parser.exit(2, f"hybrid: {exc}\n")
+    if args.command == "advise":
+        try:
+            output = advise(load_assessment(args.report))
+            rendered = (advice_markdown(output) if args.format == "markdown" else
+                        json.dumps(output, ensure_ascii=False, indent=2) + "\n")
+            if args.output:
+                destination = args.output.expanduser()
+                if destination.resolve() == args.report.expanduser().resolve():
+                    raise ValueError("Advice output must not overwrite its input report")
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(rendered, encoding="utf-8")
+            print(rendered, end="")
+            return 0
+        except (OSError, ValueError) as exc:
             parser.exit(2, f"hybrid: {exc}\n")
     try:
         root = args.target.expanduser().resolve(strict=True)

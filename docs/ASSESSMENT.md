@@ -65,3 +65,65 @@ Análise semântica profunda de AST e arquitetura, verificação efetiva de RLS/
 A **fase 2** usará o relatório estável para o AI Implementation Advisor; System Design / HYBRID REFACTOR e monitoramento ficarão em fases posteriores.
 
 Escopo e critérios detalhados: [Issue #13](https://github.com/americashowspy-create/hybrid-engine/issues/13).
+
+## Incremento de robustez e Advisor (branch de desenvolvimento)
+
+A leitura agora é limitada também no momento de abrir o arquivo e usa descritores
+relativos ao diretório, sem seguir symlinks em componentes intermediários.
+Arquivos especiais (incluindo FIFOs) não são lidos; erros ao percorrer diretórios
+contam como cobertura incompleta. A implementação exige suporte POSIX a `dir_fd`
+e `O_NOFOLLOW`; em plataformas sem esses recursos os arquivos ficam ignorados e a
+cobertura é `INCOMPLETE`, em vez de enfraquecer silenciosamente a leitura.
+A raiz informada é resolvida explicitamente; o scanner não é uma sandbox contra
+um adversário com controle do processo/sistema de arquivos inteiro.
+
+`REACT_HTML_INJECTION` identifica um ponto de renderização de HTML. HTML estático
+confiável e HTML sanitizado continuam como pistas de revisão; o scanner não faz
+análise de fluxo, não valida sanitizadores e não declara exploração comprovada.
+A recomendação pede rastrear origem, interpolação e fronteira de confiança.
+
+A classificação de testes inclui `.test.jsx`, `.spec.jsx` e `_test.go`.
+Um arquivo JSON de configuração chamado `test_*` não comprova existência de testes.
+Diretórios e symlinks com nome de lockfile não contam como lockfile regular.
+Nomes de arquivo são escapados no Markdown; continuam sendo metadados potencialmente
+sensíveis. Não compartilhe relatórios sem revisar caminhos e escopo.
+
+### AI Implementation Advisor
+
+~~~bash
+python3 -m hybrid_engine assess --target /projeto --output /tmp/assessment.json
+python3 -m hybrid_engine advise --report /tmp/assessment.json
+python3 -m hybrid_engine advise --report /tmp/assessment.json --format markdown --output /tmp/advice.md
+~~~
+
+O Advisor é determinístico, offline e não usa LLM nem dependências novas. Consome
+assessment `schema_version=1`, verifica classificações, IDs e caminhos relativos,
+deduplica achados idênticos e rejeita duplicatas conflitantes. Rejeita JSON com
+chaves repetidas, constantes não finitas, mais de 64 níveis, mais de 8 MiB ou mais
+de 5000 achados. Não aceita symlink/FIFO como entrada. Não sobrescreve o próprio
+relatório de entrada. Saída só é gravada mediante `--output`.
+
+Cada ordem inclui evidência estrutural, confiança, prioridade de revisão, impacto
+potencial, estratégia por regra, escopo mínimo, pré-requisitos, aceite, testes,
+efeitos colaterais, rollback, bloqueios e fluxo existente. Textos arbitrários do
+relatório (mensagens, recomendações e instruções embutidas) não são encaminhados.
+Regras desconhecidas exigem diagnóstico manual (`BLOCKED`). Cobertura incompleta
+bloqueia a passagem para implementação, mesmo quando não existem achados.
+
+As ordens são propostas de investigação/implementação (`PROPOSED_NOT_APPLIED`),
+não patches. `ready_for_proposal=false` é intencional: o relatório não garante
+snapshot ou autenticidade. Antes de uma implementação, reutilize o fluxo de
+escopo exato existente e obtenha SHA base e blob SHA atuais. Não passe o JSON do
+Advisor diretamente para `gh-execute`: ele não é um manifesto desse executor.
+
+### System Design / proposta de refatoração
+
+A primeira entrega reaproveita os achados `LARGE_SOURCE_FILE` e
+`EXACT_DUPLICATE_SOURCE` e o fluxo `review`, com avaliação de custo-benefício,
+interfaces/imports, aceite e rollback. Não cria outro planejador e não adiciona
+um comando HYBRID REFACTOR. Não há AST, grafo de dependências, análise de acoplamento
+ou detecção semântica de duplicação. Tamanho e igualdade de bytes são apenas
+indicadores; nenhuma refatoração é aplicada ao projeto avaliado.
+
+O Evidence Bridge permanece pendente: o contrato interno foi reforçado primeiro.
+Não há importador SARIF, adaptador externo, validação dinâmica nem pentest.
