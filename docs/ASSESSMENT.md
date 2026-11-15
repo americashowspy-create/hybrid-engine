@@ -1,0 +1,63 @@
+# Audit Intelligence — v0.10 em desenvolvimento
+
+A primeira entrega do Audit Intelligence é uma **avaliação estática e offline** de um projeto, com achados normalizados e recomendações revisáveis. Ela não altera código, não executa scripts, não acessa a internet nem consulta bancos de dados.
+
+> **Estado:** implementação experimental na branch feat/audit-intelligence-v010. A versão oficial da main ainda é v0.9.0. Nenhuma publicação v0.10 está homologada.
+
+## Como experimentar em um checkout da branch
+
+Python 3.11+ na raiz do repositório:
+
+~~~bash
+python3.11 -m hybrid_engine assess --target /caminho/do/projeto
+python3.11 -m hybrid_engine assess --target /caminho/do/projeto --format markdown
+python3.11 -m hybrid_engine assess --target /caminho/do/projeto --format json --output /tmp/assessment.json
+python3.11 -m unittest discover -s tests -q
+~~~
+
+O programa imprime o relatório por padrão. Somente escreve um arquivo de relatório quando o usuário informa explicitamente a opção \`--output\`. Nenhum arquivo \`.hybrid/\` é criado pelo comando assess.
+
+## Cobertura implementada na fase 1
+
+O relatório combina três fontes:
+
+1. **Scanner geral existente:** sinais de stack e padrões estáticos de segurança.
+2. **DB Guard v0.9:** riscos heurísticos em SQL, Firebase, Prisma e configuração; mantém as sete áreas de verificação real como \`NOT_VERIFIED\`.
+3. **Arquitetura/qualidade de código:** arquivos-fonte acima de 500 linhas, duplicações byte a byte de arquivos-fonte de pelo menos 1024 bytes, ausência de testes com nomes convencionais nos arquivos elegíveis, e ausência de lockfile reconhecido quando existe \`package.json\` na raiz.
+
+Essas regras são **indicadores limitados**, não conclusões sobre boa ou má arquitetura. Por exemplo, dois arquivos iguais podem ser intencionais, um arquivo longo pode ser bem organizado, testes podem usar nomes diferentes e um projeto pode não adotar lockfile por decisão explícita.
+
+## Contrato da avaliação
+
+- \`schema_version\`, \`mode=static_read_only\`, \`status\`, \`target\`, \`stack\`.
+- \`coverage\`: contagem de arquivos, leitura incompleta, arquivos ignorados e truncamentos, incluindo a cobertura independente do DB Guard.
+- \`findings\`: IDs estáveis, origem, categoria, severidade, localização, confiança \`suspected\` e mensagem sem snippets.
+- \`recommendations\`: prioridade **de revisão**, justificativa, ação sugerida, aceite, validação e rollback. O status é sempre \`PROPOSED_NOT_APPLIED\`; nenhuma recomendação é executada.
+- \`verification\`: testes do alvo \`NOT_RUN\`, verificações de banco real \`NOT_VERIFIED\` e análise de runtime \`NOT_VERIFIED\`.
+- \`limitations\`: explica lacunas e impedimentos.
+
+O relatório marca \`INCOMPLETE\` quando a cobertura é truncada ou algum arquivo relevante não pôde ser lido. \`NO_FINDINGS\` **não** significa que o projeto está seguro ou sem problemas.
+
+## Regras operacionais
+
+- Sem execução de código ou testes do projeto avaliado, rede, SQL, migrações ou conexão de banco.
+- Arquivos \`.env\` reais não são abertos pelo novo scanner geral; o DB Guard só examina variáveis em modelos de ambiente, nunca valores nos relatórios.
+- Ignora symlinks, diretórios típicos de dependências/artefatos e binários; analisa até 250 arquivos elegíveis, no máximo 256 KiB cada, respeitando também os limites independentes do DB Guard.
+- Não inclui valores de credenciais nem trechos de código nos relatórios. Pacotes de fontes para agentes externos continuam sujeitos às regras de privacidade próprias.
+- Não cria branches, commits, pull requests, deploys nem modifica produção.
+
+## Critérios de homologação antes do lançamento
+
+- Regressão completa dos 135 testes da v0.9 e aprovação dos testes novos na versão Python 3.11.
+- Inspeção de arquivos alterados, compilação e testes de CLI.
+- Piloto no Radar Artístico em checkout isolado, sem mudanças no projeto.
+- Verificar que não houve vazamento de valores de ambiente e que resultados incompletos são identificados corretamente.
+- Registrar \`CI_NOT_VERIFIED\` enquanto o GitHub Actions permanecer bloqueado por faturamento.
+
+## Fora desta fase
+
+Análise semântica profunda de AST e arquitetura, verificação efetiva de RLS/GRANT, custos reais, performance em runtime, integração com modelo de IA, geração automática de patches, aplicação de refatorações e auditoria contínua.
+
+A **fase 2** usará o relatório estável para o AI Implementation Advisor; System Design / HYBRID REFACTOR e monitoramento ficarão em fases posteriores.
+
+Escopo e critérios detalhados: [Issue #13](https://github.com/americashowspy-create/hybrid-engine/issues/13).
