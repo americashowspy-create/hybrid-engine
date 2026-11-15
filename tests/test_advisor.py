@@ -200,3 +200,9 @@ class AdvisorTests(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
                     main(['advise', '--report', str(path)])
                 self.assertEqual(error.exception.code, 2)
+
+    def test_nested_enumeration_failure_still_blocks_inconsistent_summary(self):
+        source = assessment()
+        source['coverage']['enumeration'] = {'errors': 1, 'truncated': False}
+        result = advise(source)
+        self.assertEqual(result['status'], 'BLOCKED')

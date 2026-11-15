@@ -37,6 +37,14 @@ def _path(value):
     return path
 
 
+def _repository(value):
+    if value is not None and (not isinstance(value, str)
+            or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', value)
+            or len(value) > 100 or SECRET_METADATA.search(value)):
+        raise ValueError('Invalid or sensitive repository claim')
+    return value
+
+
 def clean_provenance(items):
     """Allowlisted claim metadata only; shared with Advisor's input boundary."""
     if not isinstance(items, list) or not 1 <= len(items) <= MAX_REPORTS * MAX_RESULTS:
@@ -54,9 +62,18 @@ def clean_provenance(items):
         digest = item.get('report_sha256')
         if not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest):
             raise ValueError('Invalid report digest')
+        code_sha = _sha(item.get('claimed_code_sha'))
+        partition = item.get('snapshot_partition', digest + ':0' if code_sha is None else None)
+        if partition is not None and (not isinstance(partition, str)
+                or not re.fullmatch(r'[0-9a-f]{64}:[0-7]', partition)
+                or partition.split(':')[0] != digest):
+            raise ValueError('Invalid snapshot partition')
+        if code_sha is None and partition is None:
+            raise ValueError('Missing snapshot partition for unknown source SHA')
         cleaned.append({'tool': _identifier(item.get('tool')), 'version': _identifier(item.get('version')),
                         'external_rule': _identifier(item.get('external_rule', 'unknown')),
-                        'report_sha256': digest, 'claimed_code_sha': _sha(item.get('claimed_code_sha')),
+                        'report_sha256': digest, 'claimed_code_sha': code_sha,
+                        'repository': _repository(item.get('repository')), 'snapshot_partition': partition,
                         'claimed_verification': claim, 'claimed_severity': severity,
                         'environment': item['environment'], 'sha_match': item['sha_match']})
     return sorted({json.dumps(item, sort_keys=True) for item in cleaned})
@@ -82,6 +99,7 @@ def _sarif(document):
         driver = run['tool']['driver']
         properties = run.get('properties', {})
         target = {'code_sha': properties.get('hybrid_code_sha'),
+                  'repository': properties.get('hybrid_repository'),
                   'environment': properties.get('hybrid_environment', 'unknown'),
                   'scope': properties.get('hybrid_scope', [])}
         invocations = run.get('invocations', [])
@@ -137,9 +155,11 @@ def _import_evidence(paths, expected_sha):
         if not isinstance(document, dict):
             raise ValueError('Evidence document must be an object')
         runs = _sarif(document) if 'version' in document else _native(document)
-        for tool, target, coverage, results in runs:
+        for run_index, (tool, target, coverage, results) in enumerate(runs):
             tool_name, version = _identifier(tool['name']), _identifier(tool['version'])
             code_sha = _sha(target.get('code_sha'))
+            repository = _repository(target.get('repository'))
+            partition = digest + ':' + str(run_index) if code_sha is None else None
             environment = target.get('environment', 'unknown')
             if environment not in ENVIRONMENTS:
                 raise ValueError('Invalid evidence environment')
@@ -178,6 +198,8 @@ def _import_evidence(paths, expected_sha):
                 # Unmapped tool rules stay distinct; no speculative cause deduplication.
                 identity = (normalized_rule, '' if mapped else tool_name + ':' + rule,
                             path, line, code_sha, environment, tuple(scope))
+                if repository is not None or partition is not None:
+                    identity += (repository, partition)
                 item = grouped.setdefault(identity, _finding('evidence_bridge', normalized_rule, severity,
                                           'security', path, line, 'External evidence imported; text omitted and independent review required.'))
                 item['id'] = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
@@ -186,6 +208,7 @@ def _import_evidence(paths, expected_sha):
                 item['evidence_scope'] = scope
                 item.setdefault('provenance', []).append({'tool': tool_name, 'version': version,
                     'external_rule': rule, 'report_sha256': digest, 'claimed_code_sha': code_sha,
+                    'repository': repository, 'snapshot_partition': partition,
                     'claimed_verification': claim, 'claimed_severity': severity,
                     'environment': environment, 'sha_match': sha_match})
     findings = sorted(grouped.values(), key=lambda f: (SEVERITY_ORDER[f['severity']], f['path'], f['line'], f['rule'], f['id']))
@@ -216,7 +239,8 @@ def _import_evidence(paths, expected_sha):
                             'Free text, snippets, commands, URLs and attachments are omitted; no content is fetched or executed.',
                             'Structured identifiers/paths are validated, but can still contain sensitive metadata; review before sharing.',
                             'Only exact normalized relative file locations are supported; unknown coverage remains incomplete.',
-                            'Deduplication uses explicit mapped rule plus location and scope; divergent claims remain visible.']}
+                            'Deduplication uses explicit mapped rule, location, scope and snapshot; missing SHA isolates each input run.',
+                            'Repository identities and SHAs are unverified claims; missing repository identity cannot prove shared ownership.']}
 
 
 def evidence_markdown(report: dict) -> str:

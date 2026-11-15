@@ -258,3 +258,44 @@ class EvidenceBridgeTests(unittest.TestCase):
                 import_evidence([alias / 'linked-report.json'])
             with self.assertRaises(OSError):
                 load_assessment(alias / 'linked-report.json')
+
+    def test_unknown_snapshot_reports_are_not_merged_across_files(self):
+        first = native()
+        first['target']['code_sha'] = None
+        second = copy.deepcopy(first)
+        second['tool']['name'] = 'other-project-tool'
+        report = self.import_docs([first, second])
+        self.assertEqual(len(report['findings']), 2)
+        self.assertEqual(len(advise(report)['work_orders']), 2)
+
+    def test_repository_claims_partition_equal_paths_and_shas(self):
+        first, second = native(), native()
+        first['target']['repository'] = 'owner/first'
+        second['target']['repository'] = 'owner/second'
+        report = self.import_docs([first, second])
+        self.assertEqual(len(report['findings']), 2)
+        self.assertEqual(len(advise(report)['work_orders']), 2)
+        self.assertEqual({f['provenance'][0]['repository'] for f in report['findings']},
+                         {'owner/first', 'owner/second'})
+
+    def test_external_kind_and_confidence_cannot_contradict_provenance(self):
+        for change in ({'source': 'audit'}, {'confidence': 'confirmed_from_source'}):
+            source = self.import_docs([native()])
+            source['findings'][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                advise(source)
+
+    def test_unknown_snapshot_sarif_runs_are_isolated_within_one_file(self):
+        source = sarif()
+        source['runs'][0]['properties'].pop('hybrid_code_sha')
+        source['runs'].append(copy.deepcopy(source['runs'][0]))
+        report = self.import_docs([source])
+        self.assertEqual(len(report['findings']), 2)
+        self.assertEqual(len(advise(report)['work_orders']), 2)
+        self.assertEqual({f['provenance'][0]['snapshot_partition'].split(':')[-1] for f in report['findings']}, {'0', '1'})
+
+    def test_sarif_repository_claim_is_preserved(self):
+        source = sarif()
+        source['runs'][0]['properties']['hybrid_repository'] = 'owner/repository'
+        report = self.import_docs([source])
+        self.assertEqual(report['findings'][0]['provenance'][0]['repository'], 'owner/repository')

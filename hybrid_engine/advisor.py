@@ -49,6 +49,10 @@ def _validate(report: dict) -> tuple[list[dict], str]:
     findings = report.get('findings')
     if not isinstance(findings, list) or len(findings) > MAX_FINDINGS:
         raise ValueError('Invalid or excessive findings')
+    enumeration = coverage.get('enumeration', {})
+    if not isinstance(enumeration, dict):
+        raise ValueError('Invalid enumeration coverage')
+    external_report = (report.get('kind') == 'consolidated_external_evidence' or 'evidence_bridge' in report)
     seen = {}
     locations = {}
     for item in findings:
@@ -72,8 +76,16 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         # Copy only structural evidence. Never forward supplied messages or advice.
         normalized = {k: item[k] for k in ('id', 'rule', 'severity', 'confidence', 'source',
                                           'category', 'context', 'path', 'line')}
+        if ((external_report or 'provenance' in item) and item['source'] != 'evidence_bridge'):
+            raise ValueError('External provenance conflicts with finding source')
         if item['source'] == 'evidence_bridge':
+            if item['confidence'] != 'suspected':
+                raise ValueError('External claims cannot promote finding confidence')
             normalized['provenance'] = [json.loads(value) for value in clean_provenance(item.get('provenance'))]
+            bindings = {json.dumps([p['claimed_code_sha'], p['environment'], p['repository'], p['snapshot_partition']])
+                        for p in normalized['provenance']}
+            if len(bindings) != 1:
+                raise ValueError('Conflicting snapshot bindings within an imported finding; re-import original reports')
             scope = item.get('evidence_scope', [])
             if not isinstance(scope, list) or len(scope) > 2000:
                 raise ValueError('Invalid imported evidence scope')
@@ -96,7 +108,7 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         location = (item['source'], rule, path, item['line'])
         if item['source'] == 'evidence_bridge':
             # A path/line in two commits or scopes is not conflicting duplicate evidence.
-            bindings = sorted({json.dumps([p['claimed_code_sha'], p['environment'],
+            bindings = sorted({json.dumps([p['claimed_code_sha'], p['environment'], p['repository'], p['snapshot_partition'],
                 [p['tool'], p['external_rule']] if rule == 'EXTERNAL_SECURITY_FINDING' else None])
                 for p in normalized['provenance']})
             location += (json.dumps([bindings, normalized['evidence_scope']], sort_keys=True),)
@@ -108,7 +120,8 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         raise ValueError('NO_FINDINGS conflicts with findings')
     if report['status'] == 'REVIEW_REQUIRED' and not findings:
         raise ValueError('REVIEW_REQUIRED requires findings')
-    incomplete = (report['status'] == 'INCOMPLETE' or coverage['status'] == 'INCOMPLETE'
+    incomplete = (any(enumeration.get(k) for k in ('truncated', 'errors', 'special_files_excluded', 'reasons'))
+                  or report['status'] == 'INCOMPLETE' or coverage['status'] == 'INCOMPLETE'
                   or any(coverage.get(k) for k in ('truncated', 'db_findings_truncated',
                       'general_files_skipped', 'architecture_files_skipped',
                       'inventory_files_skipped', 'db_files_skipped', 'structure_files_incomplete', 'package_files_incomplete')))
