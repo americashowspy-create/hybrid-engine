@@ -7,8 +7,7 @@ from pathlib import Path
 import re
 
 from .assessment import SEVERITY_ORDER, _finding, assessment_markdown, markdown_text
-from .report_io import MAX_REPORT_BYTES, parse_json_bytes, relative_path
-from .source_io import read_source
+from .report_io import MAX_REPORT_BYTES, parse_json_bytes, relative_path, load_report_bytes
 
 MAX_REPORTS = 8
 MAX_RESULTS = 2000
@@ -131,8 +130,7 @@ def _import_evidence(paths, expected_sha):
     scopes = set()
     total = 0
     for path in paths:
-        path = Path(path).expanduser().absolute()
-        raw = read_source(path.parent, path.name, MAX_REPORT_BYTES)
+        raw = load_report_bytes(path, MAX_REPORT_BYTES)
         digest = hashlib.sha256(raw).hexdigest()
         input_digests.add(digest)
         document = parse_json_bytes(raw)
