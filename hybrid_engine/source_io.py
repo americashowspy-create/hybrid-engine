@@ -5,6 +5,8 @@ import os
 import stat
 from pathlib import Path
 
+MAX_RELATIVE_PATH_CHARS = 1024
+
 
 def read_source(root: Path, relative: str, limit: int) -> bytes:
     """Open beneath a trusted root with descriptor-relative, no-follow reads.

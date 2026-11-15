@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
-from .source_io import open_directory
+from .source_io import MAX_RELATIVE_PATH_CHARS, open_directory
 
 MAX_ENTRIES = 20000
 MAX_DIRECTORIES = 1000
@@ -21,6 +21,7 @@ class Enumeration:
     symlinks_excluded: int = 0
     special_files_excluded: int = 0
     errors: int = 0
+    path_length_excluded: int = 0
     discarded_entries: int = 0
     reasons: list[str] = field(default_factory=list)
 
@@ -31,7 +32,8 @@ class Enumeration:
     def coverage(self) -> dict:
         return {name: value for name, value in vars(self).items() if name != 'files'} | {
             'truncated': self.truncated, 'regular_files_enumerated': len(self.files),
-            'limits': {'entries': MAX_ENTRIES, 'directories': MAX_DIRECTORIES, 'depth': MAX_DEPTH},
+            'limits': {'entries': MAX_ENTRIES, 'directories': MAX_DIRECTORIES, 'depth': MAX_DEPTH,
+                       'path_characters': MAX_RELATIVE_PATH_CHARS},
             'unexamined_entries': None if self.truncated or self.errors else 0,
         }
 
@@ -71,6 +73,10 @@ def enumerate_tree(root: Path, skip_dirs: set | frozenset) -> Enumeration:
                     children = []
                     for entry in sorted(entries, key=lambda e: e.name):
                         path = f'{relative}/{entry.name}' if relative else entry.name
+                        if len(path) > MAX_RELATIVE_PATH_CHARS:
+                            result.errors += 1
+                            result.path_length_excluded += 1
+                            continue
                         try:
                             path.encode('utf-8')  # Surrogate-escaped filenames cannot enter UTF-8 reports.
                             if entry.is_symlink():

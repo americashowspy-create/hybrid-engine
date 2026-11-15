@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path, PurePosixPath
-from .source_io import read_source
+from .source_io import MAX_RELATIVE_PATH_CHARS, read_source
 
 MAX_REPORT_BYTES = 8 * 1024 * 1024
 
@@ -63,7 +63,7 @@ def parse_json_bytes(raw: bytes) -> dict:
 
 
 def relative_path(value) -> str:
-    if (not isinstance(value, str) or not value or len(value) > 1024
+    if (not isinstance(value, str) or not value or len(value) > MAX_RELATIVE_PATH_CHARS
             or any(ord(c) < 32 or ord(c) == 127 for c in value)
             or '\\' in value or ':' in value):
         raise ValueError('Invalid finding path')

@@ -147,3 +147,16 @@ class EnumerationTests(unittest.TestCase):
             result = assess_project(root)
             self.assertEqual(result['status'], 'INCOMPLETE')
             self.assertGreater(result['coverage']['enumeration']['errors'], 0)
+
+    def test_paths_beyond_report_contract_do_not_break_advisor_round_trip(self):
+        from hybrid_engine.advisor import advise
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            parent = root
+            for _ in range(9):
+                parent /= 'd' * 120
+                parent.mkdir()
+            (parent / 'source.js').write_text('eval(input);')
+            report = assess_project(root)
+            self.assertEqual(report['status'], 'INCOMPLETE')
+            self.assertEqual(advise(report)['status'], 'BLOCKED')
