@@ -8,7 +8,8 @@ from pathlib import Path, PurePosixPath
 
 from .assessment import DEFAULT_GUIDANCE, GUIDANCE, SEVERITY_ORDER, markdown_text
 from .core import FLOWS, GATES
-from .source_io import read_source
+from .report_io import load_json_report as load_assessment, relative_path as _path
+from .evidence_bridge import clean_provenance
 
 MAX_REPORT_BYTES = 8 * 1024 * 1024
 MAX_FINDINGS = 5000
@@ -38,56 +39,6 @@ RULE_GUIDANCE = {
 KNOWN_RULES = frozenset(GUIDANCE) | SECRET_RULES | frozenset(RULE_GUIDANCE)
 
 
-def load_assessment(path: Path) -> dict:
-    """Reject oversized, non-regular and ambiguous JSON before planning."""
-    path = path.expanduser().absolute()
-
-    def unique_pairs(pairs):
-        result = {}
-        for key, value in pairs:
-            if key in result:
-                raise ValueError('Duplicate JSON keys are not accepted')
-            result[key] = value
-        return result
-
-    try:
-        raw = read_source(path.parent, path.name, MAX_REPORT_BYTES)
-        text = raw.decode('utf-8')
-        depth = 0
-        quoted = escaped = False
-        for character in text:
-            if quoted:
-                if escaped:
-                    escaped = False
-                elif character == '\\':
-                    escaped = True
-                elif character == '"':
-                    quoted = False
-            elif character == '"':
-                quoted = True
-            elif character in '[{':
-                depth += 1
-                if depth > 64:
-                    raise ValueError('Assessment JSON nesting exceeds 64 levels')
-            elif character in ']}':
-                depth -= 1
-        return json.loads(text, object_pairs_hook=unique_pairs,
-                          parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite JSON')))
-    except (UnicodeError, RecursionError) as exc:
-        raise ValueError('Invalid assessment JSON encoding or nesting') from exc
-
-
-def _path(value) -> str:
-    if (not isinstance(value, str) or not value or len(value) > 1024
-            or any(ord(c) < 32 or ord(c) == 127 for c in value)
-            or '\\' in value or ':' in value):
-        raise ValueError('Invalid finding path')
-    parsed = PurePosixPath(value)
-    if parsed.is_absolute() or '..' in parsed.parts or parsed.as_posix() != value:
-        raise ValueError('Finding path must be normalized and relative')
-    return value
-
-
 def _validate(report: dict) -> tuple[list[dict], str]:
     if (not isinstance(report, dict) or type(report.get('schema_version')) is not int
             or report['schema_version'] != 1 or report.get('mode') != 'static_read_only'):
@@ -112,7 +63,7 @@ def _validate(report: dict) -> tuple[list[dict], str]:
             raise ValueError('Invalid rule')
         if (item.get('severity') not in SEVERITY_ORDER
                 or item.get('confidence') not in {'suspected', 'confirmed_from_source'}
-                or item.get('source') not in {'audit', 'db_guard', 'architecture'}
+                or item.get('source') not in {'audit', 'db_guard', 'architecture', 'evidence_bridge'}
                 or item.get('category') not in {'security', 'architecture', 'quality', 'performance',
                                                'backup', 'cost', 'transactions', 'modeling', 'migrations'}
                 or item.get('context') not in {'application_source', 'test_source'}):
@@ -123,6 +74,8 @@ def _validate(report: dict) -> tuple[list[dict], str]:
         # Copy only structural evidence. Never forward supplied messages or advice.
         normalized = {k: item[k] for k in ('id', 'rule', 'severity', 'confidence', 'source',
                                           'category', 'context', 'path', 'line')}
+        if item['source'] == 'evidence_bridge':
+            normalized['provenance'] = [json.loads(value) for value in clean_provenance(item.get('provenance'))]
         metrics = item.get('metrics', {})
         if not isinstance(metrics, dict) or any(
                 key not in {'definitions', 'branch_points', 'local_dependencies', 'component_files'}
@@ -176,6 +129,8 @@ def advise(report: dict) -> dict:
         blockers = []
         if coverage == 'INCOMPLETE':
             blockers.append('Complete or explicitly re-scope the incomplete assessment before implementation.')
+        if item['source'] == 'evidence_bridge':
+            blockers.append('External tool claims require independent scoped review before implementation.')
         if rule not in KNOWN_RULES:
             blockers.append('No rule-specific implementation strategy exists; manual diagnosis required.')
         orders.append({

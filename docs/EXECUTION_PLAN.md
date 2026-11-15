@@ -128,3 +128,16 @@ Subconjunto pnpm YAML restrito a lista packages; padrões de exclusão/anchors e
 managers desconhecidos exigem revisão e cobertura incompleta. Ausência de lock
 em workspace é reportada no proprietário, evitando duplicatas nos filhos.
 Validação incremental: 203 testes PASS em Python 3.12; gates 3.11 no fechamento.
+
+Fase D: Evidence Bridge offline funcional, contrato `external_evidence` v1 e
+subconjunto SARIF 2.1.0. `evidence-import --report` normaliza para assessment v1,
+reutiliza Advisor e bloqueia implementação até revisão independente. Até 8 arquivos
+JSON de 8 MiB e 2000 resultados globais, profundidade 64; parser estrito compartilhado
+com Advisor e manifests. Proveniência por ferramenta/versão/digest/claim SHA/ambiente.
+SHA esperado é comparação de alegações, nunca autenticação do código.
+Mensagens livres/snippets/comandos omitidos por completo; metadados sensíveis
+reconhecíveis rejeitados. Dedup apenas por mapeamento explícito + local/escopo/SHA;
+severidades/claims divergentes preservados, confiança sempre suspected. SARIF sem
+escopo exato ou execução bem-sucedida declarada é INCOMPLETE. URIs remotas,
+base URIs, índices de artefatos e suppressions não são suportados; nada é buscado.
+Validação D: 220 testes PASS; fixtures sintéticos, sem instalar ou executar ferramentas.

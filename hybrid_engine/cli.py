@@ -10,6 +10,7 @@ from .audit import scan
 from .db_guard import scan_database
 from .assessment import assess_project, assessment_markdown
 from .advisor import advise, advice_markdown, load_assessment
+from .evidence_bridge import import_evidence, evidence_markdown
 from .auto_executor import run_auto
 from .agent_bridge import prepare, submit
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
@@ -79,6 +80,12 @@ def main(argv: list[str] | None = None) -> int:
     advisor.add_argument("--report", type=Path, required=True)
     advisor.add_argument("--output", type=Path)
     advisor.add_argument("--format", choices=("json", "markdown"), default="json")
+
+    bridge = sub.add_parser("evidence-import", help="Import bounded security evidence offline; never run tools")
+    bridge.add_argument("--report", type=Path, action="append", required=True)
+    bridge.add_argument("--expected-sha")
+    bridge.add_argument("--output", type=Path)
+    bridge.add_argument("--format", choices=("json", "markdown"), default="json")
 
     gh_audit = sub.add_parser("gh-audit", help="Read-only audit of an accessible GitHub repository")
     gh_audit.add_argument("--repo", required=True, help="owner/name")
@@ -224,14 +231,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, GitHubError, KeyError, TypeError, json.JSONDecodeError) as exc:
             parser.exit(2, f"hybrid: {exc}\n")
-    if args.command == "advise":
+    if args.command in {"advise", "evidence-import"}:
         try:
-            output = advise(load_assessment(args.report))
-            rendered = (advice_markdown(output) if args.format == "markdown" else
+            output = (advise(load_assessment(args.report)) if args.command == "advise" else
+                      import_evidence(args.report, args.expected_sha))
+            rendered = ((advice_markdown(output) if args.command == "advise" else evidence_markdown(output)) if args.format == "markdown" else
                         json.dumps(output, ensure_ascii=False, indent=2) + "\n")
             if args.output:
                 destination = args.output.expanduser()
-                if destination.resolve() == args.report.expanduser().resolve():
+                if destination.resolve() in {p.expanduser().resolve() for p in ([args.report] if args.command == "advise" else args.report)}:
                     raise ValueError("Advice output must not overwrite its input report")
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_text(rendered, encoding="utf-8")

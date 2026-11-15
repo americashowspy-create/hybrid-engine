@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import fnmatch
-import json
 import posixpath
 import re
 from pathlib import Path
 
 from .source_io import read_source
+from .report_io import parse_json_bytes
 
 LOCK_MANAGERS = {'package-lock.json': 'npm', 'npm-shrinkwrap.json': 'npm',
                  'pnpm-lock.yaml': 'pnpm', 'yarn.lock': 'yarn', 'bun.lock': 'bun', 'bun.lockb': 'bun'}
@@ -15,7 +15,8 @@ MAX_MANIFESTS = 100
 MAX_MANIFEST_BYTES = 64 * 1024
 
 
-def analyze_packages(root: Path, files: list[str]) -> dict:
+def analyze_packages(root: Path, files: list[str], *, reader=None) -> dict:
+    reader = reader or read_source
     known = set(files)
     manifests = sorted(p for p in files if posixpath.basename(p) == 'package.json')
     packages = {}
@@ -24,7 +25,7 @@ def analyze_packages(root: Path, files: list[str]) -> dict:
         incomplete.append({'path': '.', 'reason': 'manifest_budget'})
     for path in manifests[:MAX_MANIFESTS]:
         try:
-            data = json.loads(read_source(root, path, MAX_MANIFEST_BYTES).decode('utf-8'))
+            data = parse_json_bytes(reader(root, path, MAX_MANIFEST_BYTES))
             if not isinstance(data, dict):
                 raise ValueError('Manifest must be an object')
             directory = posixpath.dirname(path)
@@ -42,7 +43,7 @@ def analyze_packages(root: Path, files: list[str]) -> dict:
             # pnpm's common YAML subset; no YAML object construction or interpolation.
             yaml_path = posixpath.join(directory, 'pnpm-workspace.yaml')
             if yaml_path in known:
-                text = read_source(root, yaml_path, MAX_MANIFEST_BYTES).decode('utf-8')
+                text = reader(root, yaml_path, MAX_MANIFEST_BYTES).decode('utf-8')
                 active = False
                 for line in text.splitlines():
                     if re.fullmatch(r'packages:\s*(?:#.*)?', line):
