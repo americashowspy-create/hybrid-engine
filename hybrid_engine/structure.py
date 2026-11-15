@@ -105,7 +105,8 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                             prefix = '.'.join(base + ([prefix] if prefix else []))
                         for alias in node.names:
                             local_imports.append((prefix + '.' + alias.name if prefix else alias.name, node.lineno))
-                        local_imports.append((prefix, node.lineno))
+                        if node.module:
+                            local_imports.append((prefix, node.lineno))
                 kind = 'python_ast'
             except (SyntaxError, ValueError, RecursionError, MemoryError):
                 incomplete.append({'path': path, 'reason': 'parse_or_node_limit'})

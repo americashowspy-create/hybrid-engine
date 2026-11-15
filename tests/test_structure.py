@@ -128,3 +128,13 @@ import('./b');
             self.assertNotIn('EXACT_DUPLICATE_SOURCE', rules)
             self.assertNotIn('NO_TESTS_DETECTED', rules)
             self.assertEqual(report['structure']['generated_files_excluded'], ['first.ts', 'second.ts'])
+
+    def test_package_initializer_relative_import_does_not_create_implicit_self_cycle(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'pkg').mkdir()
+            (root / 'pkg' / '__init__.py').write_text('from . import child\n')
+            (root / 'pkg' / 'child.py').write_text('value=1')
+            result = analyze_structure(root, ['pkg/__init__.py', 'pkg/child.py'])
+            self.assertEqual(result['edges'], [{'source': 'pkg/__init__.py', 'target': 'pkg/child.py', 'line': 1}])
+            self.assertEqual(result['issues'], [])
