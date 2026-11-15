@@ -1,4 +1,4 @@
-# HYBRID AUTO — protocolo universal para agentes de IA (v0.8)
+# HYBRID AUTO — protocolo universal para agentes de IA (v0.9)
 
 [README](../README.md) · [Comece aqui](COMECE_AQUI.md) · [Comandos prontos](EXEMPLOS_DE_COMANDOS.md) · [Instruções do agente](../AGENTS.md)
 
@@ -11,7 +11,7 @@ Não é um modelo de IA, plugin embutido nem coleção completa de ferramentas e
 ## Comando padrão
 
 ```text
-HYBRID AUTO — v0.8
+HYBRID AUTO — v0.9
 
 Framework: https://github.com/americashowspy-create/hybrid-engine
 Projeto: https://github.com/OWNER/REPOSITORY

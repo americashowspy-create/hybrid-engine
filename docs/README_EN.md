@@ -2,7 +2,7 @@
 
 **From a plain-language request to a reviewable pull request, with explicit risk and verification gates.**
 
-Hybrid Engine is an **experimental v0.8, agent-, interface-, and provider-neutral workflow** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
+Hybrid Engine is an **experimental v0.9, agent-, interface-, and provider-neutral workflow** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
 
 **[Português](../README.md)** · [Portable agent protocol](../AGENTS.md) · [ChatGPT AUTO guide](CHATGPT_AUTO.md) · [Security](SECURITY.md) · [Contribution guide](../CONTRIBUTING.md)
 
@@ -15,7 +15,7 @@ Use a **chat assistant with repository tools**, a **coding agent / IDE** or an o
 Open a fresh session or a repository checkout, explicitly ask the agent to read `AGENTS.md` and the [universal execution protocol](AGENT_AUTO.md), and replace the placeholder URL:
 
 ```text
-HYBRID AUTO v0.8
+HYBRID AUTO v0.9
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -81,6 +81,8 @@ hybrid gh-execute --bundle /tmp/agent-bundle.json \
 A separate agent/developer must supply and review the change-set JSON. The bundle contains source code: keep it private.
 
 ## Security, cost and maturity
+
+**v0.9 local validation:** 135 tests passed on Python 3.11.16, including 11 DB Guard tests. An offline pilot scanned 35 files in Radar Artístico and reported 6 suspected SQL policy findings without changing project or database data. GitHub Actions was blocked by billing/spending limits; hosted CI remains unverified.
 
 - No automatic production deployment, merging or secret changes.
 - No claim that static heuristics replace penetration testing or access-control validation.

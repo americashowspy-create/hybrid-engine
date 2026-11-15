@@ -1,4 +1,4 @@
-# HYBRID AUTO — chat-oriented companion guide (v0.8)
+# HYBRID AUTO — chat-oriented companion guide (v0.9)
 
 **Canonical, vendor-neutral protocol:** [AGENT_AUTO.md](AGENT_AUTO.md). This specialized guide remains available for existing integrations.
 

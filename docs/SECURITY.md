@@ -14,4 +14,8 @@ Supabase public/publishable/legacy anon keys are not, by themselves, leaked secr
 - For serious security issues, use private disclosure; do not open public issues with exploit details.
 - Existing project test scripts can have side effects. Run only with explicit `--tests` and review them first.
 
+DB Guard's initial static mode identifies a few database-risk patterns and leaves
+effective RLS/GRANT, backup restoration, costs, data integrity and live query performance
+as NOT_VERIFIED. It does not read live .env files or run SQL. [DB Guard guide](DB_GUARD.md).
+
 For deeper checks, integrate pinned external analyzers through separate reviewed CI jobs.

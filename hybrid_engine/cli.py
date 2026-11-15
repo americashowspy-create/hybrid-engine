@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__
 from .audit import scan
+from .db_guard import scan_database
 from .auto_executor import run_auto
 from .agent_bridge import prepare, submit
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
@@ -35,6 +36,18 @@ def markdown_report(report: dict, test: dict) -> str:
         lines.append(f"- **{issue['severity']}** {issue['rule']} — `{issue['path']}:{issue['line']}` (suspected; validation required)")
     if not report["audit"]["findings"]:
         lines.append("No findings from the built-in rules (not proof of safety).")
+    if "db_guard" in report:
+        db = report["db_guard"]
+        lines += ["", "## DB Guard — offline static signals", "",
+                  f"- Status: **{db['status']}**",
+                  f"- Database signals: {', '.join(db['database_signals']) or 'none'}",
+                  f"- Findings: {len(db['findings'])}", ""]
+        for issue in db["findings"]:
+            lines.append(f"- **{issue['severity']}** {issue['rule']} — {issue['path']}:{issue['line']} (suspected)")
+        lines += ["", "### Not verified against a real database", ""]
+        for category, item in db["verification"].items():
+            lines.append(f"- {category}: **{item['status']}** — {item['reason']}")
+        lines.append("")
     lines += ["", "## Limits", ""]
     lines += ["- " + value for value in report["audit"]["limitations"]]
     lines += ["- Code fixes, PR creation, deployment and complete verification require an authorized execution adapter."]
@@ -51,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
         if command == "run":
             p.add_argument("--intent", required=True, help="Request in natural language; e.g. HYBRID AUDIT-FIX")
             p.add_argument("--tests", action="store_true", help="Explicitly run recognized project test scripts")
+    db_audit_parser = sub.add_parser("db-audit", help="Offline read-only database heuristics (no DB access)")
+    db_audit_parser.add_argument("--target", type=Path, default=Path("."))
+    db_audit_parser.add_argument("--output", type=Path, help="Optional JSON report path")
+
     gh_audit = sub.add_parser("gh-audit", help="Read-only audit of an accessible GitHub repository")
     gh_audit.add_argument("--repo", required=True, help="owner/name")
     gh_audit.add_argument("--ref", help="Source branch or commit (default: default branch)")
@@ -199,7 +216,11 @@ def main(argv: list[str] | None = None) -> int:
         root = args.target.expanduser().resolve(strict=True)
         if not root.is_dir():
             parser.error("--target must be a directory")
-        if args.command == "init":
+        if args.command == "db-audit":
+            output = scan_database(root)
+            if args.output:
+                write_json(args.output.expanduser(), output)
+        elif args.command == "init":
             output = initialize(root)
         elif args.command == "inspect":
             output = scan(root)
@@ -211,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
             paths = hybrid_dir(root)
             plan_path = write_json(paths / "plans" / (plan["id"] + ".json"), plan)
             audit = scan(root)
+            db_guard = scan_database(root)
             tests = run_tests(root) if args.tests else {"status": "NOT_RUN", "reason": "Requires --tests"}
             report = {
                 "schema_version": 1,
@@ -219,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
                 "audit": audit, "tests": tests,
                 "status": "needs_agent_execution" if plan["flow"] in ("build", "audit-fix", "debug", "review") else "reported",
             }
+            if db_guard["database_signals"] or db_guard["findings"] or plan["flow"] == "db-audit":
+                report["db_guard"] = db_guard
             report_path = write_json(paths / "reports" / (plan["id"] + ".json"), report)
             markdown_path = paths / "reports" / (plan["id"] + ".md")
             markdown_path.write_text(markdown_report(report, tests), encoding="utf-8")
@@ -228,6 +252,9 @@ def main(argv: list[str] | None = None) -> int:
                 "report": str(report_path), "report_markdown": str(markdown_path),
                 "tests_status": tests["status"], "findings": len(audit["findings"]),
             }
+            if "db_guard" in report:
+                state["db_guard_status"] = db_guard["status"]
+                state["db_guard_findings"] = len(db_guard["findings"])
             write_json(paths / "state.json", state)
             output = state
         print(json.dumps(output, ensure_ascii=False, indent=2))
