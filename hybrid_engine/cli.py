@@ -8,6 +8,7 @@ from pathlib import Path
 from . import __version__
 from .audit import scan
 from .db_guard import scan_database
+from .assessment import assess_project, assessment_markdown
 from .auto_executor import run_auto
 from .agent_bridge import prepare, submit
 from .github_adapter import GitHubClient, GitHubError, propose_changes, remote_audit
@@ -67,6 +68,11 @@ def main(argv: list[str] | None = None) -> int:
     db_audit_parser = sub.add_parser("db-audit", help="Offline read-only database heuristics (no DB access)")
     db_audit_parser.add_argument("--target", type=Path, default=Path("."))
     db_audit_parser.add_argument("--output", type=Path, help="Optional JSON report path")
+
+    assess_parser = sub.add_parser("assess", help="Offline unified project assessment (no code execution)")
+    assess_parser.add_argument("--target", type=Path, default=Path("."))
+    assess_parser.add_argument("--output", type=Path, help="Optional explicit report output path")
+    assess_parser.add_argument("--format", choices=("json", "markdown"), default="json")
 
     gh_audit = sub.add_parser("gh-audit", help="Read-only audit of an accessible GitHub repository")
     gh_audit.add_argument("--repo", required=True, help="owner/name")
@@ -218,6 +224,18 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("--target must be a directory")
         if args.command == "db-audit":
             output = scan_database(root)
+            if args.output:
+                write_json(args.output.expanduser(), output)
+        elif args.command == "assess":
+            output = assess_project(root)
+            if args.format == "markdown":
+                rendered = assessment_markdown(output)
+                if args.output:
+                    destination = args.output.expanduser()
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_text(rendered, encoding="utf-8")
+                print(rendered, end="")
+                return 0
             if args.output:
                 write_json(args.output.expanduser(), output)
         elif args.command == "init":
