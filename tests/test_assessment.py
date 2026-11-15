@@ -166,5 +166,64 @@ class AssessmentTests(unittest.TestCase):
             self.assertNotIn("Tests: **PASSED**", out.getvalue())
 
 
+    def test_test_source_indicators_remain_visible_and_not_auto_dismissed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "tests").mkdir()
+            fake = "sb_" + "secret_" + "abcdefghijklm"
+            (root / "tests" / "test_credentials.py").write_text(
+                "EXAMPLE_TOKEN = '" + fake + "'\n")
+            report = assess_project(root)
+            issues = [x for x in report["findings"] if x["rule"] == "SUPABASE_SECRET"]
+            self.assertEqual(len(issues), 1)
+            self.assertEqual(issues[0]["severity"], "critical")
+            self.assertEqual(issues[0]["context"], "test_source")
+            self.assertEqual(report["summary"]["application_source_findings"], 0)
+            self.assertEqual(report["summary"]["test_source_findings"], 1)
+            advice = next(x for x in report["recommendations"]
+                          if x["finding_id"] == issues[0]["id"])
+            self.assertEqual(advice["priority"], "P1_REVIEW")
+            self.assertIn("genuine secret", advice["review_note"])
+            self.assertNotIn(fake, json.dumps(report))
+
+    def test_generated_supabase_types_skip_size_heuristic_not_security(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "lib").mkdir()
+            (root / "lib" / "database.types.ts").write_text(
+                "export type Database = {};\n"
+                "// __InternalSupabase metadata\n"
+                + "export const value = 0;\n" * 510
+                + "eval(example);\n")
+            result = assess_project(root)
+            self.assertNotIn("LARGE_SOURCE_FILE", rule_set(result))
+            self.assertIn("JS_EVAL", rule_set(result))
+            self.assertEqual(
+                result["coverage"]["generated_types_excluded_from_size_rule"], 1)
+
+    def test_name_only_does_not_suppress_size_rule(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "database.types.ts").write_text("export const value = 0;\n" * 510)
+            result = assess_project(root)
+            self.assertIn("LARGE_SOURCE_FILE", rule_set(result))
+            self.assertEqual(
+                result["coverage"]["generated_types_excluded_from_size_rule"], 0)
+
+    def test_application_and_test_source_counted_separately_in_markdown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "app.ts").write_text("eval(example);\n")
+            (root / "test_app.py").write_text("eval = lambda x: x\n")
+            result = assess_project(root)
+            self.assertEqual(result["summary"]["application_source_findings"], 1)
+            self.assertEqual(result["summary"]["test_source_findings"], 0)
+            self.assertEqual(result["findings"][0]["context"], "application_source")
+            md = assessment_markdown(result)
+            self.assertIn("Application-source findings: 1", md)
+            self.assertIn("Test-source findings: 0", md)
+            self.assertIn("Context: application_source", md)
+
+
 if __name__ == "__main__":
     unittest.main()
