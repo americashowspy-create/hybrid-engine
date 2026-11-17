@@ -88,8 +88,9 @@ import/export estático relativo, descartando comentários, strings e templates.
 - `NO_TESTS_DETECTED`: ausência de nomes convencionais no escopo, nunca prova de
   ausência de estratégia de testes. JSON `test_*` não equivale a teste executável.
 
-Limites estruturais: 128 KiB por fonte, 50000 nós AST globais, 2000 arestas.
-Parsing/limites/leitura impossíveis são registrados e tornam assessment incompleto.
+Limites estruturais: 128 KiB por fonte, **50.000 nós AST por partição de arquivos**, até **8 partições por assessment** (limite total explícito de 400.000 nós examináveis) e 2.000 arestas. Um arquivo individual acima de 50.000 nós continua incompleto; esgotar as 8 partições registra `ast_partition_budget` e bloqueia o Advisor. Os módulos são analisados inteiros, com reinício do contador somente entre arquivos; o grafo de imports é consolidado entre partições, sem executar código. Os limites globais de fontes e enumeração permanecem. Parsing/limites/leitura impossíveis continuam gerando status `INCOMPLETE`.
+
+O relatório inclui `structure.ast_partitions_used`, `structure.ast_nodes_examined` e limites da execução. Análise completa do escopo estático não equivale a pentest, cobertura de testes nem validação de banco real.
 Pacotes Python com `__init__.py` têm precedência sobre módulos `.py` homônimos.
 Imports relativos além do package conhecido e múltiplos alvos locais JS/TS não são
 adivinhados: `unresolved_imports` registra a localização e o motivo.
