@@ -39,14 +39,18 @@ Para cada dimensão: **situação**, **evidências verificáveis**, **lacunas de
 Com checkout local e **Python 3.11+** disponível, revisar permissões e executar comandos de leitura:
 
 ```bash
+# Entrada integrada: assessment + Advisor em um único relatório, sem rodar testes:
+python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-project-audit.json
+
+# Componentes avulsos, úteis para inspeção específica:
 python3 -m hybrid_engine inspect --target /caminho/do/projeto
 python3 -m hybrid_engine assess --target /caminho/do/projeto --output /tmp/hybrid-assessment.json
 python3 -m hybrid_engine advise --report /tmp/hybrid-assessment.json --output /tmp/hybrid-advice.json
-# Se houver banco ou migrations relevantes:
+# DB Guard já participa do assessment; pode também ser chamado isoladamente:
 python3 -m hybrid_engine db-audit --target /caminho/do/projeto
 ```
 
-O Advisor prioriza achados do assessment; **não substitui revisão humana nem comprovação de falhas**. Não executar scripts do projeto por padrão. A permissão para ler código não autoriza conexões, testes ativos, migrações ou produção.
+O comando `project-audit` entrega uma **linha de base estática** com dimensões declaradas; os itens marcados `NOT_RUN` e `NOT_VERIFIED` exigem inspeção adicional pela IA. O Advisor prioriza achados do assessment; **não substitui revisão humana nem comprovação de falhas**. Não executar scripts do projeto por padrão. A permissão para ler código não autoriza conexões, testes ativos, migrações ou produção.
 
 Quando a IA tiver somente acesso ao GitHub, usar a leitura autorizada de arquivos, diffs e checks. Se a CLI não foi executada, registrar explicitamente `CLI: NOT_RUN`; **não atribuir resultados inferidos à ferramenta**. Se faltarem arquivos relevantes ou houver acesso negado, informar quais conclusões ficaram indisponíveis.
 
