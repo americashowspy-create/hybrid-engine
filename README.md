@@ -4,7 +4,7 @@
 
 Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
 
-**Versão:** `v0.9` (experimental) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão:** `v0.10.0` (beta offline) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
@@ -52,7 +52,7 @@ O protocolo pode ser seguido por **chats com acesso a repositórios, agentes de 
 **Comando universal para copiar:**
 
 ```text
-HYBRID AUTO — v0.9
+HYBRID AUTO — v0.10.0
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -80,10 +80,13 @@ Não dispare verificações hospedadas desnecessariamente.
 
 ➡️ [Comece aqui](docs/COMECE_AQUI.md) · [Comandos prontos](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo universal](docs/AGENT_AUTO.md).
 
-## ✨ Funcionalidades disponíveis na v0.9
+## ✨ Funcionalidades disponíveis na v0.10.0
 
 | Recurso | O que entrega |
 | --- | --- |
+| **Audit Intelligence** | `assess` produz diagnóstico offline com cobertura e limites explícitos, sem executar código do projeto. |
+| **Implementation Advisor** | `advise` transforma achados em ordens determinísticas de revisão; não aplica patches. |
+| **Evidence Bridge** | `evidence-import` recebe JSON/SARIF limitados, preserva proveniência e bloqueia evidências externas contraditórias. |
 | **Roteamento inteligente de tarefas** | HYBRID AUTO direciona a auditoria, investigação, correção ou planejamento conforme o objetivo. |
 | **Planejamento e especificação** | Fluxos AUDIT / AUDIT-FIX / DEBUG / BUILD / REVIEW / STATUS, com critérios de aceite e entregas verificáveis. |
 | **Investigação e revisão** | Análise da causa de problemas, inspeção estática, revisão de mudanças e identificação de riscos com escopo explícito. |
@@ -164,7 +167,9 @@ Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo universal para a
 
 ## 🧪 Qualidade e estado do projeto
 
-**v0.9 — homologação local:** 135 testes aprovados no Python 3.11.16 (Mac), incluindo 11 testes do DB Guard. Piloto offline no Radar Artístico: 35 arquivos examinados e 6 alertas suspeitos de políticas SQL, sem alterações no projeto ou no banco. O GitHub Actions não executou o job por bloqueio de faturamento/limite; CI hospedado permanece não homologado.
+**v0.10.0 — beta offline:** 251/251 testes locais aprovados com Python 3.11 no Mac (HEAD `f028e8b`). Piloto operacional independente no Radar Artístico: 12 achados suspeitos, 12 ordens, cobertura `BOUNDED_COMPLETE`, nenhum arquivo ou HEAD alterado. Evidence Bridge → Advisor preservou `BLOCKED` para evidências contraditórias. **CI hospedado não validado**: o run GitHub Actions 43835400450 falhou, sem logs acessíveis; a franquia informada estava esgotada. A validação local não substitui CI nem pentest.
+
+**Histórico v0.9:** 135 testes Python 3.11.16 aprovados no Mac; piloto anterior no Radar com 35 arquivos e seis alertas SQL suspeitos, sem alterações no projeto nem no banco.
 
 A v0.8 teve **124 testes Python aprovados em execução offline isolada**, incluindo quatro casos de ponta a ponta com um **GitHub simulado**; os 33 arquivos Python foram comparados ao commit testado via Git blob SHA. Essa evidência está registrada na [PR #9](https://github.com/americashowspy-create/hybrid-engine/pull/9).
 
@@ -178,12 +183,13 @@ python3 -m compileall -q hybrid_engine tests
 python3 -m hybrid_engine --help
 ```
 
-## Desenvolvimento experimental: assessment e evidências
+## Audit Intelligence, Advisor e Evidence Bridge — beta offline
 
-Na branch `feat/assessment-advisor-hardening`, `assess` combina scanners offline,
+Disponível na `main` a partir da PR #15: `assess` combina scanners offline,
 imports/estrutura local e package managers/workspaces. `advise --report` gera ordens
 de revisão sem aplicar patches; `evidence-import --report` recebe JSON/SARIF offline
-sem executar ferramentas. Essa branch não é uma release v0.10 homologada.
+sem executar ferramentas. Esta versão beta foi homologada localmente, mas o CI hospedado
+continua não verificado; não é certificação de segurança.
 [Contratos, exemplos e limites](docs/ASSESSMENT.md) · [Evidências](docs/EXECUTION_PLAN.md).
 
 ## 🤝 Quer testar com amigos?
@@ -208,4 +214,4 @@ Comece por [Comece aqui](docs/COMECE_AQUI.md), veja os [prompts prontos](docs/EX
 
 **Projeto independente:** combina, em implementação própria, planejamento, investigação, revisão, controle de mudanças e evidências. Não é fork nem integração oficial de ferramentas externas. Referências e créditos técnicos: [Agradecimentos](ACKNOWLEDGEMENTS.md).
 
-Licenciado sob [MIT](LICENSE) · **v0.9 experimental** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
+Licenciado sob [MIT](LICENSE) · **v0.10.0 beta offline** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.

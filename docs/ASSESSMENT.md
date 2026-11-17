@@ -1,6 +1,6 @@
-# Audit Intelligence, System Design e Evidence Bridge — desenvolvimento
+# Audit Intelligence, System Design e Evidence Bridge — beta offline v0.10.0
 
-Branch: `feat/assessment-advisor-hardening`; a main continua v0.9.0.
+Integrado à `main` na PR #15; versão beta v0.10.0, com CI hospedado ainda não verificado.
 Implementação experimental, offline e independente de agente/LLM. Não é pentest,
 certificação de segurança ou verificação de comportamento em produção.
 
