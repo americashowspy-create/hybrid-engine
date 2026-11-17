@@ -1,4 +1,4 @@
-# Comece aqui — Hybrid Engine v0.9
+# Comece aqui — Hybrid Engine v0.10.0 (beta offline)
 
 Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
 
@@ -24,7 +24,7 @@ Você precisa de:
 3. Peça explicitamente a leitura de `AGENTS.md` e do protocolo universal; cole o exemplo abaixo, substituindo a URL do projeto alvo.
 
 ```text
-HYBRID AUTO — TESTE REAL v0.9
+HYBRID AUTO — TESTE REAL v0.10.0
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine

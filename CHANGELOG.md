@@ -1,11 +1,14 @@
 # Changelog
 
-## Não lançado — branch feat/assessment-advisor-hardening
+## [0.10.0] — 2026-11-17 (beta offline)
 
-A main continua em v0.9.0. Esta lista descreve desenvolvimento para revisão, não
-uma release publicada ou integração já homologada.
+Integrado à `main` pela PR #15, após homologação local (251 testes Python 3.11 e piloto
+Radar Artístico offline com 12 ordens de revisão e projeto intacto). GitHub Actions
+hospedado **NOT_VERIFIED** por falha sem logs e franquia esgotada. O código foi
+homologado na branch no commit `f028e8b`; alterações desta preparação são apenas
+versão e documentação, sem alterar a lógica de avaliação.
 
-### Funcionalidades em desenvolvimento
+### Funcionalidades integradas na versão beta
 
 - Assessment offline unificado, Advisor determinístico e importação JSON/SARIF
   limitada de evidências externas, sem ferramentas ou modelos obrigatórios.
@@ -33,7 +36,7 @@ uma release publicada ou integração já homologada.
 
 - Sem novas dependências runtime, comandos ou alterações no schema_version=1.
   Campos de proveniência repository/snapshot_partition e unresolved_imports são
-  aditivos. A main e suas funcionalidades existentes não foram modificadas.
+  aditivos. A integração preservou as funcionalidades existentes da v0.9, acrescentando os módulos beta.
 - IDs de evidências com SHA conhecido e sem repositório novo preservados. Sem SHA
   ou com namespace repository explícito, a identidade muda para impedir mistura.
 - Relatórios antigos sem SHA que já misturaram múltiplas fontes podem ser rejeitados
