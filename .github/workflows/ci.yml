@@ -16,33 +16,15 @@ permissions:
 
 jobs:
   test:
-    # Temporary local validation is restricted to the reviewed PR and branch.
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 17 &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'feat/advisor-safe-handoff-v011'
-    runs-on: [self-hosted, macOS, ARM64, hybrid-engine-v011-pr17]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verify local runner isolation
-        if: runner.environment == 'self-hosted'
-        run: |
-          test "$(uname -s)" = Darwin
-          test "$(uname -m)" = arm64
-          test "$(id -un)" = _hybridci
-          test "$(id -u)" != 0
-          test "$HOME" = /Users/runner
-          test ! -x /Users/felipejacob
-          test ! -r /Users/felipejacob/.config/gh/hosts.yml
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - name: Use local Python 3.11
-        run: |
-          /opt/homebrew/bin/python3.11 -I -m venv --without-pip "$RUNNER_TEMP/hybrid-python311"
-          "$RUNNER_TEMP/hybrid-python311/bin/python" -I -c "import platform, sys; assert sys.version_info[:2] == (3, 11); assert platform.machine() == 'arm64'; print(sys.version); print(sys.executable)"
-          echo "$RUNNER_TEMP/hybrid-python311/bin" >> "$GITHUB_PATH"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
       - name: Test (stdlib)
         run: python -m unittest discover -s tests -v
       - name: CLI smoke test
@@ -52,6 +34,9 @@ jobs:
           python -m hybrid_engine db-audit --help
           python -m hybrid_engine assess --help
           python -m hybrid_engine advise --help
+          python -m hybrid_engine project-audit --help
+          python -m hybrid_engine project-audit --target . --output "$RUNNER_TEMP/hybrid-project-audit.json" > /dev/null
+          python -c "import json, os; d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'], 'hybrid-project-audit.json'))); assert d['mode']=='static_read_only' and d['tests']['status']=='NOT_RUN' and d['changes']['target_files_modified']==0"
           python -m hybrid_engine evidence-import --help
           python -m hybrid_engine assess --target . --output "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
           python -m hybrid_engine advise --report "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
@@ -67,6 +52,7 @@ jobs:
           python -m hybrid_engine gh-execute --help
           python -m hybrid_engine gh-agent --help
           python -m hybrid_engine gh-chat-package --help
+          python -m hybrid_engine gh-advice-package --help
 
       - name: Remote GitHub audit of this repository (main branch only)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
