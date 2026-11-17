@@ -52,6 +52,8 @@ python3 -m hybrid_engine db-audit --target /caminho/do/projeto
 
 Grave o relatório em um caminho **fora do projeto alvo** (como `/tmp/...`); o comando rejeita saídas dentro do diretório auditado para preservar a operação somente leitura.
 
+Com `--output`, o terminal recebe apenas um **resumo compacto** (estado, quantidade de achados e caminho do arquivo); o JSON completo fica no arquivo externo ao projeto. Sem `--output`, o relatório completo é exibido no terminal.
+
 O comando `project-audit` entrega uma **linha de base estática** com dimensões declaradas; os itens marcados `NOT_RUN` e `NOT_VERIFIED` exigem inspeção adicional pela IA. O Advisor prioriza achados do assessment; **não substitui revisão humana nem comprovação de falhas**. Não executar scripts do projeto por padrão. A permissão para ler código não autoriza conexões, testes ativos, migrações ou produção.
 
 Quando a IA tiver somente acesso ao GitHub, usar a leitura autorizada de arquivos, diffs e checks. Se a CLI não foi executada, registrar explicitamente `CLI: NOT_RUN`; **não atribuir resultados inferidos à ferramenta**. Se faltarem arquivos relevantes ou houver acesso negado, informar quais conclusões ficaram indisponíveis.
