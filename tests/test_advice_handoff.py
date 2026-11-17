@@ -28,7 +28,7 @@ class IsolatedGitHub:
         self.commit = "a" * 40
         self.tree = "b" * 40
         self.blob = hashlib.sha1(
-            b"blob " + str(len(self.content)).encode("ascii") + b"\\x00" + self.content
+            b"blob " + str(len(self.content)).encode("ascii") + b"\x00" + self.content
         ).hexdigest()
         self.calls = []
         self.ref_reads = 0
@@ -214,7 +214,7 @@ class AdviceHandoffTests(unittest.TestCase):
             "expected_base_sha": client.commit, "title": "test: simulated review",
             "changes": [{
                 "path": "app.tsx", "expected_sha": client.blob,
-                "content": "<div>safe static test</div>\\n",
+                "content": "<div>safe static test</div>\n",
             }],
         }
         preview = submit(client, order, proposal, apply=False)
