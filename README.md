@@ -4,12 +4,12 @@
 
 Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
 
-**Versão:** `v0.10.0` (beta offline) · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão:** `v0.10.0` (beta offline) · **Integração v0.11:** em branch de revisão · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
 
-**[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
+**[Auditoria completa com IA](docs/PROJECT_AUDIT.md)** · **[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
 
 ---
 
@@ -38,6 +38,16 @@ Pedido no agente de IA ou terminal de sua escolha
 ```
 
 A ação de escrever código é feita pelo **agente conectado** (ou por um desenvolvedor). A CLI auxilia no planejamento, na auditoria, na preparação do pacote de fontes e nas validações; **não inventa correções sozinha**.
+
+## 🧠 Auditoria completa gerenciada por uma IA
+
+O caso de uso principal é **você solicitar uma análise a Codex, ChatGPT, Claude Code ou outro agente com acesso real ao seu projeto**. O agente usa este repositório como protocolo técnico, consulta o código, emprega as ferramentas Hybrid disponíveis e entrega **relatório + melhorias priorizadas**, sem modificar nada por conta própria.
+
+- **Projeto novo:** arquitetura, segurança, dados, plano e critérios antes de implementar.
+- **Projeto em andamento:** auditoria do estado atual, riscos e melhorias incrementais.
+- **Projeto existente:** revisão por dimensões e roadmap de modernização.
+
+Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Com Python 3.11+ e checkout local, a entrada integrada é `python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-project-audit.json` (relatório estático, **não** auditoria total automática). Diferentemente do fluxo `HYBRID AUTO` focado em um problema, esse modo organiza uma revisão de várias dimensões com escopo e cobertura declarados. **Uma análise ampla não significa pentest, acesso a produção ou ausência de riscos.** A primeira entrega é um relatório; correções e PRs requerem comando posterior e autorização.
 
 ## 🚀 Comece no ambiente de sua preferência
 
@@ -86,6 +96,7 @@ Não dispare verificações hospedadas desnecessariamente.
 | --- | --- |
 | **Audit Intelligence** | `assess` produz diagnóstico offline com cobertura e limites explícitos, sem executar código do projeto. |
 | **Implementation Advisor** | `advise` transforma achados em ordens determinísticas de revisão; não aplica patches. |
+| **Advisor Safe Handoff (v0.11 experimental)** | `gh-advice-package` exporta pacote privado vinculado a SHA, para revisão por agente, sem gerar patches ou alterar o GitHub. |
 | **Evidence Bridge** | `evidence-import` recebe JSON/SARIF limitados, preserva proveniência e bloqueia evidências externas contraditórias. |
 | **Roteamento inteligente de tarefas** | HYBRID AUTO direciona a auditoria, investigação, correção ou planejamento conforme o objetivo. |
 | **Planejamento e especificação** | Fluxos AUDIT / AUDIT-FIX / DEBUG / BUILD / REVIEW / STATUS, com critérios de aceite e entregas verificáveis. |
