@@ -48,6 +48,16 @@ class ProjectAuditTests(unittest.TestCase):
             self.assertIn(result["coverage"]["status"], {"BOUNDED_COMPLETE", "INCOMPLETE"})
             self.assertIn(result["dimensions"]["database"], {"PARTIAL_STATIC", "NOT_DETECTED"})
 
+    def test_cli_rejects_output_inside_audited_project(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            report = root / "report.json"
+            with contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    main(["project-audit", "--target", str(root), "--output", str(report)])
+            self.assertEqual(raised.exception.code, 2)
+            self.assertFalse(report.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
