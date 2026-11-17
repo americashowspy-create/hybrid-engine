@@ -9,7 +9,7 @@ Um framework **independente de agente, modelo e interface** para organizar audit
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
 
-**[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
+**[Auditoria completa com IA](docs/PROJECT_AUDIT.md)** · **[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
 
 ---
 
@@ -38,6 +38,16 @@ Pedido no agente de IA ou terminal de sua escolha
 ```
 
 A ação de escrever código é feita pelo **agente conectado** (ou por um desenvolvedor). A CLI auxilia no planejamento, na auditoria, na preparação do pacote de fontes e nas validações; **não inventa correções sozinha**.
+
+## 🧠 Auditoria completa gerenciada por uma IA
+
+O caso de uso principal é **você solicitar uma análise a Codex, ChatGPT, Claude Code ou outro agente com acesso real ao seu projeto**. O agente usa este repositório como protocolo técnico, consulta o código, emprega as ferramentas Hybrid disponíveis e entrega **relatório + melhorias priorizadas**, sem modificar nada por conta própria.
+
+- **Projeto novo:** arquitetura, segurança, dados, plano e critérios antes de implementar.
+- **Projeto em andamento:** auditoria do estado atual, riscos e melhorias incrementais.
+- **Projeto existente:** revisão por dimensões e roadmap de modernização.
+
+Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Diferentemente do fluxo `HYBRID AUTO` focado em um problema, esse modo organiza uma revisão de várias dimensões com escopo e cobertura declarados. **Uma análise ampla não significa pentest, acesso a produção ou ausência de riscos.** A primeira entrega é um relatório; correções e PRs requerem comando posterior e autorização.
 
 ## 🚀 Comece no ambiente de sua preferência
 
