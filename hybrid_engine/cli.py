@@ -9,6 +9,7 @@ from . import __version__
 from .audit import scan
 from .db_guard import scan_database
 from .assessment import assess_project, assessment_markdown
+from .project_audit import project_audit
 from .advisor import advise, advice_markdown, load_assessment
 from .evidence_bridge import import_evidence, evidence_markdown
 from .auto_executor import run_auto
@@ -75,6 +76,10 @@ def main(argv: list[str] | None = None) -> int:
     assess_parser.add_argument("--target", type=Path, default=Path("."))
     assess_parser.add_argument("--output", type=Path, help="Optional explicit report output path")
     assess_parser.add_argument("--format", choices=("json", "markdown"), default="json")
+
+    project_parser = sub.add_parser("project-audit", help="Read-only assessment and prioritized advice for an AI reviewer")
+    project_parser.add_argument("--target", type=Path, default=Path("."))
+    project_parser.add_argument("--output", type=Path, help="Optional JSON report path")
 
     advisor = sub.add_parser("advise", help="Offline implementation review orders from an assessment")
     advisor.add_argument("--report", type=Path, required=True)
@@ -251,7 +256,11 @@ def main(argv: list[str] | None = None) -> int:
         root = args.target.expanduser().resolve(strict=True)
         if not root.is_dir():
             parser.error("--target must be a directory")
-        if args.command == "db-audit":
+        if args.command == "project-audit":
+            output = project_audit(root)
+            if args.output:
+                write_json(args.output.expanduser(), output)
+        elif args.command == "db-audit":
             output = scan_database(root)
             if args.output:
                 write_json(args.output.expanduser(), output)
