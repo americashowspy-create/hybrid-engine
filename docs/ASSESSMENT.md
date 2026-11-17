@@ -219,3 +219,40 @@ Nenhuma dependência, serviço pago, Docker ou modelo é obrigatório.
 Consulte [EXECUTION_PLAN.md](EXECUTION_PLAN.md) para testes realmente executados,
 comparações dos pilotos, medições, commits e limitações remanescentes.
 CI hospedado continua CI_NOT_VERIFIED, separado dos testes locais.
+
+## Em desenvolvimento: handoff seguro do Advisor (v0.11)
+
+O comando experimental `gh-advice-package` transforma **uma** ordem não bloqueada
+de `advise` num pacote privado de código, reutilizando `gh-chat-package`,
+`gh-workorder` e a auditoria remota com arquivos exatos e SHAs. É uma ponte
+para revisão humana/por agente autorizado, **não** um gerador automático de
+correção nem um manifesto `gh-execute`.
+
+Exemplo, após produzir um assessment local e identificar seu `work_orders[].id`:
+
+~~~bash
+python3 -m hybrid_engine advise --report /tmp/assessment.json --output /tmp/advice.json
+python3 -m hybrid_engine gh-advice-package \
+  --report /tmp/assessment.json \
+  --order-id advice-COLE_ID_VALIDO_AQUI \
+  --repo OWNER/REPOSITORY --ref main \
+  --output /tmp/hybrid-private-bundle.json
+~~~
+
+Substitua o ID ilustrativo por um valor real `advice-` seguido de 16 caracteres
+hexadecimais do relatório. O arquivo de saída deve ser **novo** e estar em uma
+pasta existente. É criado com permissão `0600`; não o publique no GitHub,
+em logs ou a provedores externos sem autorização.
+
+**Gates conservadores:** recusa avaliações incompletas/bloqueadas, ordens
+desconhecidas, fluxos `review`, alegações importadas, possíveis credenciais e
+caminhos protegidos. Exige 1–20 caminhos exatos; respeita limites de 64 KiB
+por fonte, confirma o SHA da branch durante o snapshot remoto, não executa
+código do projeto e não gera conteúdo de patch. A entrada offline pode ser
+antiga ou referir-se a outro projeto: a correspondência assessment ↔ GitHub
+continua `NOT_VERIFIED`, e o achado deve ser confirmado independentemente.
+
+O fluxo posterior permanece inalterado: um agente autorizado avalia o
+pacote e elabora um manifesto revisado; `gh-execute --bundle ... --manifest ...`
+somente faz preview sem `--apply`. Criar PR Draft requer opt-in separado.
+Nunca faz merge, deploy ou alteração de produção.
