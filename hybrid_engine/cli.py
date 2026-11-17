@@ -257,9 +257,13 @@ def main(argv: list[str] | None = None) -> int:
         if not root.is_dir():
             parser.error("--target must be a directory")
         if args.command == "project-audit":
+            if args.output:
+                destination = args.output.expanduser().resolve()
+                if destination.is_relative_to(root):
+                    raise ValueError("Project audit output must be outside the target directory")
             output = project_audit(root)
             if args.output:
-                write_json(args.output.expanduser(), output)
+                write_json(destination, output)
         elif args.command == "db-audit":
             output = scan_database(root)
             if args.output:
