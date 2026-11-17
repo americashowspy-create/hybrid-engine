@@ -101,6 +101,40 @@ import('./b');
             self.assertEqual(result['structure']['incomplete'][0]['reason'], 'parse_or_node_limit')
             self.assertEqual(advise(result)['status'], 'BLOCKED')
 
+    def test_bounded_ast_partitions_preserve_cross_partition_imports(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('import b\\n' + 'x = 1\\n' * 4)
+            (root / 'b.py').write_text('import a\\n' + 'x = 1\\n' * 4)
+            with patch('hybrid_engine.structure.MAX_NODES', 25):
+                report = analyze_structure(root, ['a.py', 'b.py'])
+            self.assertEqual(report['incomplete'], [])
+            self.assertEqual(report['ast_partitions_used'], 2)
+            self.assertLessEqual(report['ast_nodes_examined'], 25 * 2)
+            self.assertEqual(len(report['edges']), 2)
+            self.assertTrue(any(item['rule'] == 'LOCAL_IMPORT_CYCLE' for item in report['issues']))
+
+    def test_ast_partition_count_exhaustion_is_explicit_and_blocks_advisor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('import b\\n' + 'x = 1\\n' * 4)
+            (root / 'b.py').write_text('import a\\n' + 'x = 1\\n' * 4)
+            with patch('hybrid_engine.structure.MAX_NODES', 25), \\
+                    patch('hybrid_engine.structure.MAX_AST_PARTITIONS', 1):
+                report = assess_project(root)
+            self.assertEqual(report['status'], 'INCOMPLETE')
+            self.assertEqual(report['structure']['incomplete'][0]['reason'], 'ast_partition_budget')
+            self.assertEqual(report['structure']['ast_partitions_used'], 1)
+            self.assertEqual(advise(report)['status'], 'BLOCKED')
+
+    def test_single_ast_larger_than_partition_stays_incomplete(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'a.py').write_text('x = 1\\n' * 10)
+            with patch('hybrid_engine.structure.MAX_NODES', 25):
+                report = analyze_structure(root, ['a.py'])
+            self.assertEqual(report['incomplete'][0]['reason'], 'parse_or_node_limit')
+
     def test_bounded_size_edges_and_determinism(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
