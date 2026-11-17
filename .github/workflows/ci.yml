@@ -16,10 +16,28 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Temporary local validation is restricted to the reviewed PR and branch.
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 17 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/advisor-safe-handoff-v011'
+    runs-on: [self-hosted, macOS, ARM64, hybrid-engine-v011-pr17]
     timeout-minutes: 10
     steps:
+      - name: Verify local runner isolation
+        if: runner.environment == 'self-hosted'
+        run: |
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test "$(id -un)" = _hybridci
+          test "$(id -u)" != 0
+          test "$HOME" = /Users/runner
+          test ! -x /Users/felipejacob
+          test ! -r /Users/felipejacob/.config/gh/hosts.yml
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
