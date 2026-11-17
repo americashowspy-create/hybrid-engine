@@ -375,3 +375,12 @@ Medição local, Python 3.12.14, mediana de 7 assessments do mesmo snapshot:
 Contagens são evidência do trabalho de IO evitado, tempos são apenas observações
 neste ambiente, não benchmark universal. Cache byte-only evita duplicar AST/textos.
 Gates E: 224 testes PASS em Python 3.11.18 e 3.12.14.
+
+
+## Candidata v0.11: auditoria particionada (17/11/2026)
+
+O limite **global** de 50.000 nós AST descrito nas evidências históricas acima é o comportamento efetivamente observado nos commits antigos; as medições anteriores continuam válidas para aqueles SHAs.
+
+A candidata v0.11 da PR #18 acrescenta **particionamento determinístico entre arquivos completos**, com teto de 50.000 nós AST por partição e no máximo 8 partições por assessment. Arquivos individuais que excedam uma partição, erro de parsing, fontes inacessíveis, 8 partições esgotadas, excesso de arestas ou limites de inventário **continuam** produzindo `INCOMPLETE` e bloqueio do Advisor. O grafo de imports é consolidado em uma única passagem depois da leitura, preservando ciclos entre arquivos que caiam em partições diferentes. `ast_partitions_used` e os limites são publicados no relatório.
+
+**Ainda não homologado no HEAD após a alteração:** a execução anterior de 263 testes foi aprovada no commit `1d53dbeff98783e5692d7d3c86a58ca8eea375d4`, antes da implementação. A nova candidata precisa de execução local completa e smoke `project-audit` no commit final; não declarar cobertura total sem examinar os campos de cobertura da nova execução. Testes de integração via GitHub Actions hospedado permaneceram sem execução comprovada devido a falha de infraestrutura sem logs disponíveis.

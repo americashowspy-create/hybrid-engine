@@ -88,8 +88,9 @@ import/export estático relativo, descartando comentários, strings e templates.
 - `NO_TESTS_DETECTED`: ausência de nomes convencionais no escopo, nunca prova de
   ausência de estratégia de testes. JSON `test_*` não equivale a teste executável.
 
-Limites estruturais: 128 KiB por fonte, 50000 nós AST globais, 2000 arestas.
-Parsing/limites/leitura impossíveis são registrados e tornam assessment incompleto.
+Limites estruturais: 128 KiB por fonte, **50.000 nós AST por partição de arquivos**, até **8 partições por assessment** (limite total explícito de 400.000 nós examináveis) e 2.000 arestas. Um arquivo individual acima de 50.000 nós continua incompleto; esgotar as 8 partições registra `ast_partition_budget` e bloqueia o Advisor. Os módulos são analisados inteiros, com reinício do contador somente entre arquivos; o grafo de imports é consolidado entre partições, sem executar código. Os limites globais de fontes e enumeração permanecem. Parsing/limites/leitura impossíveis continuam gerando status `INCOMPLETE`.
+
+O relatório inclui `structure.ast_partitions_used`, `structure.ast_nodes_examined` e limites da execução. Análise completa do escopo estático não equivale a pentest, cobertura de testes nem validação de banco real.
 Pacotes Python com `__init__.py` têm precedência sobre módulos `.py` homônimos.
 Imports relativos além do package conhecido e múltiplos alvos locais JS/TS não são
 adivinhados: `unresolved_imports` registra a localização e o motivo.
@@ -219,3 +220,40 @@ Nenhuma dependência, serviço pago, Docker ou modelo é obrigatório.
 Consulte [EXECUTION_PLAN.md](EXECUTION_PLAN.md) para testes realmente executados,
 comparações dos pilotos, medições, commits e limitações remanescentes.
 CI hospedado continua CI_NOT_VERIFIED, separado dos testes locais.
+
+## Em desenvolvimento: handoff seguro do Advisor (v0.11)
+
+O comando experimental `gh-advice-package` transforma **uma** ordem não bloqueada
+de `advise` num pacote privado de código, reutilizando `gh-chat-package`,
+`gh-workorder` e a auditoria remota com arquivos exatos e SHAs. É uma ponte
+para revisão humana/por agente autorizado, **não** um gerador automático de
+correção nem um manifesto `gh-execute`.
+
+Exemplo, após produzir um assessment local e identificar seu `work_orders[].id`:
+
+~~~bash
+python3 -m hybrid_engine advise --report /tmp/assessment.json --output /tmp/advice.json
+python3 -m hybrid_engine gh-advice-package \
+  --report /tmp/assessment.json \
+  --order-id advice-COLE_ID_VALIDO_AQUI \
+  --repo OWNER/REPOSITORY --ref main \
+  --output /tmp/hybrid-private-bundle.json
+~~~
+
+Substitua o ID ilustrativo por um valor real `advice-` seguido de 16 caracteres
+hexadecimais do relatório. O arquivo de saída deve ser **novo** e estar em uma
+pasta existente. É criado com permissão `0600`; não o publique no GitHub,
+em logs ou a provedores externos sem autorização.
+
+**Gates conservadores:** recusa avaliações incompletas/bloqueadas, ordens
+desconhecidas, fluxos `review`, alegações importadas, possíveis credenciais e
+caminhos protegidos. Exige 1–20 caminhos exatos; respeita limites de 64 KiB
+por fonte, confirma o SHA da branch durante o snapshot remoto, não executa
+código do projeto e não gera conteúdo de patch. A entrada offline pode ser
+antiga ou referir-se a outro projeto: a correspondência assessment ↔ GitHub
+continua `NOT_VERIFIED`, e o achado deve ser confirmado independentemente.
+
+O fluxo posterior permanece inalterado: um agente autorizado avalia o
+pacote e elabora um manifesto revisado; `gh-execute --bundle ... --manifest ...`
+somente faz preview sem `--apply`. Criar PR Draft requer opt-in separado.
+Nunca faz merge, deploy ou alteração de produção.

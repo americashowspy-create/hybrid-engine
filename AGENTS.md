@@ -4,7 +4,7 @@ This document is a **portable protocol**. ChatGPT, Codex, Claude, Cursor, CLI an
 
 ## One-command handshake
 
-If a user provides this repository URL and says `HYBRID AUTO`, `AUDIT`, `AUDIT-FIX`, `DEBUG`, `BUILD`, `REVIEW` or `STATUS`, read this file and the user's target repository. If available, read `docs/WORKFLOWS.md`. Never pretend those files were loaded if not accessible.
+If a user provides this repository URL and says `HYBRID AUTO`, `AUDIT`, `AUDIT-FIX`, `DEBUG`, `BUILD`, `REVIEW`, `STATUS` or a request for a comprehensive project audit, read this file and the user's target repository. If available, read `docs/WORKFLOWS.md`. Never pretend those files were loaded if not accessible.
 
 1. Identify target repository, default branch, current state, current functionality, permissions and risk.
 2. Route by user goal: status, audit, debug, build, review, or auto. Do not confuse an audit with permission to deploy.
@@ -24,6 +24,16 @@ If a user provides this repository URL and says `HYBRID AUTO`, `AUDIT`, `AUDIT-F
 - RESOLVED: evidence-backed re-test exists.
 
 No agent implementation is mandatory. Codex is **optional**, not the backend.
+
+## HYBRID PROJECT AUDIT — user-led full project assessment
+
+When the user requests a **comprehensive audit**, project structure review, or improvement plan, follow [docs/PROJECT_AUDIT.md](docs/PROJECT_AUDIT.md) instead of reducing the task to a single small issue. Support **new, in-progress, and existing projects**. Inspect all applicable dimensions (architecture, code/dependencies, database, security, tests, operations and documentation), with a coverage ledger and explicit limits. A broad audit is **READ_ONLY by default**. Deliver evidence-based findings, strengths, priorities and a staged improvement plan; do **not** edit code or create a PR until the user selects a specific improvement and authorizes the required operation.
+
+The optional Python CLI can help perform parts of the assessment. It is not a substitute for source review, cannot magically access external repositories, and cannot certify security or live database policies. Never describe an unrun tool as executed. Use `CONFIRMED`, `SUSPECTED` and `NOT_TESTED` honestly.
+
+## Advisor Safe Handoff — v0.11 experimental
+
+After a user-selected Advisor order and with explicitly scoped repository access, the optional `hybrid gh-advice-package` command exports a **private** SHA-pinned source bundle for independent review. It does not authenticate the match between an offline assessment and the live repository; always re-check the source before proposing a fix. Export is read-only and never invokes an agent. See `docs/ASSESSMENT.md`.
 
 ## HYBRID AUTO — provider-neutral workflow (v0.9)
 
