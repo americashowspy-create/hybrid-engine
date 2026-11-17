@@ -1,17 +1,62 @@
 """v0.11 Advisor handoff: strict review gates and no implicit network/writes."""
+import base64
 import contextlib
 import copy
 import io
+import hashlib
 import json
+import stat
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from hybrid_engine.advice_handoff import export_advice_package
+from hybrid_engine.agent_bridge import submit
+from hybrid_engine.chat_package import work_order_from_bundle
+from hybrid_engine.github_adapter import GitHubError
 from hybrid_engine.advisor import advise
 from hybrid_engine.assessment import assess_project
 from hybrid_engine.cli import main
+
+
+class IsolatedGitHub:
+    """Synthetic repository; rejects ALL network/write calls except expected GETs."""
+
+    def __init__(self, source: str):
+        self.content = source.encode("utf-8")
+        self.commit = "a" * 40
+        self.tree = "b" * 40
+        self.blob = hashlib.sha1(
+            b"blob " + str(len(self.content)).encode("ascii") + b"\\x00" + self.content
+        ).hexdigest()
+        self.calls = []
+        self.ref_reads = 0
+        self.move_branch = False
+
+    def request(self, method, path, data=None, *, allow_404=False):
+        self.calls.append((method, path))
+        if method != "GET":
+            raise AssertionError("Isolated end-to-end test must never write to GitHub")
+        prefix = "/repos/acme/demo"
+        if path == prefix + "/git/ref/heads/main":
+            self.ref_reads += 1
+            sha = "f" * 40 if self.move_branch and self.ref_reads >= 2 else self.commit
+            return {"object": {"sha": sha}}
+        if path == prefix + "/git/commits/" + self.commit:
+            return {"tree": {"sha": self.tree}}
+        if path == prefix + "/git/trees/" + self.tree + "?recursive=1":
+            return {"truncated": False, "tree": [{
+                "path": "app.tsx", "type": "blob", "mode": "100644",
+                "sha": self.blob, "size": len(self.content),
+            }]}
+        if path == prefix + "/git/blobs/" + self.blob:
+            return {"encoding": "base64",
+                    "content": base64.b64encode(self.content).decode("ascii")}
+        if path == prefix + "/contents/app.tsx?ref=" + self.commit:
+            return {"type": "file", "sha": self.blob, "encoding": "base64",
+                    "content": base64.b64encode(self.content).decode("ascii")}
+        raise AssertionError("Unexpected simulated GitHub request: " + path)
 
 
 class AdviceHandoffTests(unittest.TestCase):
@@ -142,6 +187,52 @@ class AdviceHandoffTests(unittest.TestCase):
             client.return_value, self.report, self.order["id"],
             "acme/demo", self.output, ref="main"
         )
+
+    def test_end_to_end_real_assess_to_private_package_and_safe_preview(self):
+        """No mocks of assess/advise/prepare/export/source_package/submit."""
+        client = IsolatedGitHub((self.root / "app.tsx").read_text(encoding="utf-8"))
+        metadata = export_advice_package(
+            client, self.report, self.order["id"], "acme/demo", self.output, ref="main"
+        )
+        self.assertEqual(metadata["status"], "PACKAGE_EXPORTED")
+        self.assertEqual(metadata["assessment_to_github_match"], "NOT_VERIFIED")
+        self.assertEqual(metadata["github_writes"], False)
+        self.assertEqual(metadata["manifest"], "NOT_CREATED")
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o600)
+        bundle = json.loads(self.output.read_text(encoding="utf-8"))
+        order = work_order_from_bundle(bundle)
+        self.assertEqual(order["flow"], "audit-fix")
+        self.assertTrue(order["audit"]["complete"])
+        self.assertEqual(order["base_sha"], client.commit)
+        self.assertEqual(bundle["sources"][0]["expected_sha"], client.blob)
+        self.assertEqual(bundle["sources"][0]["path"], "app.tsx")
+        self.assertEqual(len(bundle["sources"]), 1)
+        self.assertTrue(all(method == "GET" for method, _ in client.calls))
+        # A human-reviewed manifest would be a separate step. Preview is read-only.
+        proposal = {
+            "schema_version": 1, "repo": "acme/demo", "base": "main",
+            "expected_base_sha": client.commit, "title": "test: simulated review",
+            "changes": [{
+                "path": "app.tsx", "expected_sha": client.blob,
+                "content": "<div>safe static test</div>\\n",
+            }],
+        }
+        preview = submit(client, order, proposal, apply=False)
+        self.assertEqual(preview["status"], "PREVIEW")
+        self.assertEqual(preview["production"], "UNCHANGED")
+        self.assertFalse(preview["writes_performed"])
+        self.assertTrue(all(method == "GET" for method, _ in client.calls))
+
+    def test_end_to_end_branch_moves_during_audit_fails_closed(self):
+        client = IsolatedGitHub((self.root / "app.tsx").read_text(encoding="utf-8"))
+        client.move_branch = True
+        with self.assertRaisesRegex(GitHubError, "Branch changed while auditing"):
+            export_advice_package(
+                client, self.report, self.order["id"], "acme/demo",
+                self.output, ref="main",
+            )
+        self.assertFalse(self.output.exists())
+        self.assertTrue(all(method == "GET" for method, _ in client.calls))
 
 
 if __name__ == "__main__":
