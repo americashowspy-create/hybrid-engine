@@ -1,9 +1,11 @@
 """Conservative offline database checks: no DB connections and no source execution."""
 from __future__ import annotations
 
-import os
 import re
 from pathlib import Path
+
+from .source_io import read_source
+from .enumeration import Enumeration, enumerate_tree
 
 SKIP_DIRS = frozenset({
     ".git", ".hg", ".svn", ".venv", "venv", "node_modules", "dist", "build",
@@ -68,8 +70,9 @@ def _signal(path: str, content: str) -> set[str]:
     return found
 
 
-def scan_database(root: Path) -> dict:
+def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=None) -> dict:
     """Inspect bounded text files only. Never run SQL or contact a database."""
+    reader = reader or read_source
     root = Path(root).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
@@ -78,93 +81,96 @@ def scan_database(root: Path) -> dict:
     scanned = skipped = 0
     truncated = False
     findings_truncated = False
-    for current, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink() or not _candidate(path):
-                continue
-            if scanned >= MAX_FILES:
-                truncated = True
-                break
-            try:
-                if path.stat().st_size > MAX_BYTES:
-                    skipped += 1
-                    continue
-                data = path.read_bytes()
-                if b"\x00" in data:
-                    skipped += 1
-                    continue
-                content = data.decode("utf-8")
-            except (OSError, UnicodeDecodeError):
+    tree = enumeration if enumeration is not None else enumerate_tree(root, SKIP_DIRS)
+    for relative in tree.files:
+        path = root / relative
+        name = path.name
+        if path.is_symlink():
+            skipped += 1  # A regular inventory entry changed before reading.
+            continue
+        if not _candidate(path):
+            continue
+        if scanned >= MAX_FILES:
+            truncated = True
+            break
+        try:
+            if path.stat().st_size > MAX_BYTES:
                 skipped += 1
                 continue
-            scanned += 1
-            rel = path.relative_to(root).as_posix()
-            signals.update(_signal(rel, content))
-            if name.startswith(".env"):
-                # Inspect example variable names only, never values.
-                content = "\n".join(line.split("=", 1)[0] for line in content.splitlines())
-            sql = path.suffix.lower() == ".sql"
-            firebase = name == "firestore.rules" or path.suffix.lower() == ".rules"
-            for line_number, line in enumerate(content.splitlines(), 1):
-                stripped = line.strip()
-                if not stripped or stripped.startswith(("#", "//", "--", "*")):
-                    continue
-                code = line.split("--", 1)[0] if sql else line
+            data = reader(root, path.relative_to(root).as_posix(), MAX_BYTES)
+            if b"\x00" in data:
+                skipped += 1
+                continue
+            content = data.decode("utf-8")
+        except (OSError, UnicodeDecodeError):
+            skipped += 1
+            continue
+        scanned += 1
+        rel = path.relative_to(root).as_posix()
+        signals.update(_signal(rel, content))
+        if name.startswith(".env"):
+            # Inspect example variable names only, never values.
+            content = "\n".join(line.split("=", 1)[0] for line in content.splitlines())
+        sql = path.suffix.lower() == ".sql"
+        firebase = name == "firestore.rules" or path.suffix.lower() == ".rules"
+        for line_number, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith(("#", "//", "--", "*")):
+                continue
+            code = line.split("--", 1)[0] if sql else line
 
-                def add(rule: str, category: str, severity: str, message: str):
-                    nonlocal findings_truncated
-                    if len(findings) >= MAX_FINDINGS:
-                        findings_truncated = True
-                        return
-                    findings.append({
-                        "rule": rule, "category": category, "severity": severity,
-                        "confidence": "suspected", "path": rel, "line": line_number,
-                        "message": message,
-                    })
+            def add(rule: str, category: str, severity: str, message: str):
+                nonlocal findings_truncated
+                if len(findings) >= MAX_FINDINGS:
+                    findings_truncated = True
+                    return
+                findings.append({
+                    "rule": rule, "category": category, "severity": severity,
+                    "confidence": "suspected", "path": rel, "line": line_number,
+                    "message": message,
+                })
 
-                if PUBLIC_PRIVILEGED.search(code):
-                    add("PUBLIC_PRIVILEGED_CONFIG", "security", "high", "Privileged database credential name appears under a public client-side variable prefix; verify actual exposure and rotate if disclosed.")
-                if firebase and OPEN_FIREBASE.search(code):
-                    add("FIREBASE_OPEN_RULE", "security", "high", "Firestore rule appears to allow unrestricted access; review effective rules and authentication.")
-                if sql and RLS_DISABLED.search(code):
-                    add("RLS_DISABLED", "security", "high", "SQL appears to disable row-level security; review applicability, roles, GRANTs and effective policies.")
-                if (sql and MONEY_FLOAT_SQL.search(code)) or (path.suffix.lower() == ".prisma" and MONEY_FLOAT_PRISMA.search(code)):
-                    add("MONEY_FLOAT", "modeling", "medium", "Monetary field appears to use floating point; check whether NUMERIC or integer minor units are appropriate.")
-                if sql and TIMESTAMP_NO_TZ.search(code):
-                    add("TIMESTAMP_NO_TZ", "modeling", "low", "Event timestamp appears to omit timezone; check intended semantics.")
-                if sql and "migration" in rel.lower() and DESTRUCTIVE.search(code):
-                    add("DESTRUCTIVE_MIGRATION", "migrations", "high", "Migration contains potentially destructive SQL; require backup, rollback review and explicit approval.")
-                if sql:
-                    match = HIGH_OFFSET.search(code)
-                    offset = (match.group(1).lstrip("0") or "0") if match else "0"
-                    if len(offset) > 3 or (len(offset) == 3 and offset >= "500"):
-                        add("HIGH_OFFSET", "performance", "low", "Large fixed OFFSET may degrade pagination; confirm query usage and consider cursor pagination.")
+            if PUBLIC_PRIVILEGED.search(code):
+                add("PUBLIC_PRIVILEGED_CONFIG", "security", "high", "Privileged database credential name appears under a public client-side variable prefix; verify actual exposure and rotate if disclosed.")
+            if firebase and OPEN_FIREBASE.search(code):
+                add("FIREBASE_OPEN_RULE", "security", "high", "Firestore rule appears to allow unrestricted access; review effective rules and authentication.")
+            if sql and RLS_DISABLED.search(code):
+                add("RLS_DISABLED", "security", "high", "SQL appears to disable row-level security; review applicability, roles, GRANTs and effective policies.")
+            if (sql and MONEY_FLOAT_SQL.search(code)) or (path.suffix.lower() == ".prisma" and MONEY_FLOAT_PRISMA.search(code)):
+                add("MONEY_FLOAT", "modeling", "medium", "Monetary field appears to use floating point; check whether NUMERIC or integer minor units are appropriate.")
+            if sql and TIMESTAMP_NO_TZ.search(code):
+                add("TIMESTAMP_NO_TZ", "modeling", "low", "Event timestamp appears to omit timezone; check intended semantics.")
+            if sql and "migration" in rel.lower() and DESTRUCTIVE.search(code):
+                add("DESTRUCTIVE_MIGRATION", "migrations", "high", "Migration contains potentially destructive SQL; require backup, rollback review and explicit approval.")
             if sql:
-                # Policy clauses are often split across lines; strip SQL line comments.
-                uncommented = "\n".join(line.split("--", 1)[0] for line in content.splitlines())
-                for match in OPEN_POLICY.finditer(uncommented):
-                    if len(findings) >= MAX_FINDINGS:
-                        findings_truncated = True
-                        break
-                    findings.append({
-                        "rule": "PERMISSIVE_SQL_POLICY", "category": "security", "severity": "high",
-                        "confidence": "suspected", "path": rel,
-                        "line": uncommented.count("\n", 0, match.start()) + 1,
-                        "message": "SQL policy appears to allow all rows for a policy operation; review roles, GRANTs and intended access.",
-                    })
-            if findings_truncated:
-                break
-        if truncated or findings_truncated:
+                match = HIGH_OFFSET.search(code)
+                offset = (match.group(1).lstrip("0") or "0") if match else "0"
+                if len(offset) > 3 or (len(offset) == 3 and offset >= "500"):
+                    add("HIGH_OFFSET", "performance", "low", "Large fixed OFFSET may degrade pagination; confirm query usage and consider cursor pagination.")
+        if sql:
+            # Policy clauses are often split across lines; strip SQL line comments.
+            uncommented = "\n".join(line.split("--", 1)[0] for line in content.splitlines())
+            for match in OPEN_POLICY.finditer(uncommented):
+                if len(findings) >= MAX_FINDINGS:
+                    findings_truncated = True
+                    break
+                findings.append({
+                    "rule": "PERMISSIVE_SQL_POLICY", "category": "security", "severity": "high",
+                    "confidence": "suspected", "path": rel,
+                    "line": uncommented.count("\n", 0, match.start()) + 1,
+                    "message": "SQL policy appears to allow all rows for a policy operation; review roles, GRANTs and intended access.",
+                })
+        if findings_truncated:
             break
+    skipped += tree.errors + tree.special_files_excluded
+    truncated = truncated or tree.truncated
     priority = {area: pos for pos, area in enumerate(CATEGORIES)}
     findings.sort(key=lambda item: (priority[item["category"]], item["path"], item["line"], item["rule"]))
     return {
         "schema_version": 1, "mode": "static_read_only",
         "status": "INCOMPLETE" if truncated or skipped or findings_truncated else "DETECTED" if signals or findings else "NO_DATABASE_EVIDENCE",
         "database_signals": sorted(signals), "files_scanned": scanned,
-        "files_skipped": skipped, "truncated": truncated, "findings_truncated": findings_truncated, "findings": findings,
+        "files_skipped": skipped, "enumeration": tree.coverage(), "truncated": truncated, "findings_truncated": findings_truncated, "findings": findings,
         "verification": {category: {"status": "NOT_VERIFIED", "reason": VERIFY_LIVE[category]} for category in CATEGORIES},
         "limitations": [
             "Static heuristic signals are not confirmed vulnerabilities or a complete database audit.",
