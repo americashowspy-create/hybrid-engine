@@ -47,7 +47,7 @@ O caso de uso principal é **você solicitar uma análise a Codex, ChatGPT, Clau
 - **Projeto em andamento:** auditoria do estado atual, riscos e melhorias incrementais.
 - **Projeto existente:** revisão por dimensões e roadmap de modernização.
 
-Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Diferentemente do fluxo `HYBRID AUTO` focado em um problema, esse modo organiza uma revisão de várias dimensões com escopo e cobertura declarados. **Uma análise ampla não significa pentest, acesso a produção ou ausência de riscos.** A primeira entrega é um relatório; correções e PRs requerem comando posterior e autorização.
+Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Com Python 3.11+ e checkout local, a entrada integrada é `python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-project-audit.json` (relatório estático, **não** auditoria total automática). Diferentemente do fluxo `HYBRID AUTO` focado em um problema, esse modo organiza uma revisão de várias dimensões com escopo e cobertura declarados. **Uma análise ampla não significa pentest, acesso a produção ou ausência de riscos.** A primeira entrega é um relatório; correções e PRs requerem comando posterior e autorização.
 
 ## 🚀 Comece no ambiente de sua preferência
 
