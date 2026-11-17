@@ -10,6 +10,7 @@ from .audit import scan
 from .db_guard import scan_database
 from .assessment import assess_project, assessment_markdown
 from .advisor import advise, advice_markdown, load_assessment
+from .advice_handoff import export_advice_package
 from .evidence_bridge import import_evidence, evidence_markdown
 from .auto_executor import run_auto
 from .agent_bridge import prepare, submit
@@ -161,9 +162,16 @@ def main(argv: list[str] | None = None) -> int:
     gh_chat.add_argument("--output", required=True, type=Path,
                          help="New private local JSON filename; no source code printed")
 
+    advice_package = sub.add_parser("gh-advice-package", help="Read-only Advisor -> private SHA-pinned source bundle")
+    advice_package.add_argument("--report", required=True, type=Path, help="Existing assessment v1 JSON")
+    advice_package.add_argument("--order-id", required=True, help="One Advisor review order ID")
+    advice_package.add_argument("--repo", required=True, help="owner/name (the code to independently verify)")
+    advice_package.add_argument("--ref", help="Source branch (default: repository default)")
+    advice_package.add_argument("--output", required=True, type=Path, help="New private JSON bundle file")
+
     args = parser.parse_args(argv)
 
-    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent", "gh-chat-package"):
+    if args.command in ("gh-audit", "gh-propose", "gh-task", "gh-verify", "gh-auto", "gh-workorder", "gh-execute", "gh-agent", "gh-chat-package", "gh-advice-package"):
         try:
             client = GitHubClient()
             if args.command == "gh-audit":
@@ -190,6 +198,11 @@ def main(argv: list[str] | None = None) -> int:
                           if args.scope_paths else prepare(client, args.repo, args.goal, ref=args.ref))
                 if args.output:
                     write_json(args.output.expanduser(), output)
+            elif args.command == "gh-advice-package":
+                output = export_advice_package(
+                    client, args.report, args.order_id, args.repo, args.output,
+                    ref=args.ref,
+                )
             elif args.command == "gh-chat-package":
                 output = export_chat_package(
                     client, args.repo, args.goal, args.scope_paths, args.output,
