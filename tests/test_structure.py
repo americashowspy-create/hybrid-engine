@@ -104,8 +104,8 @@ import('./b');
     def test_bounded_ast_partitions_preserve_cross_partition_imports(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / 'a.py').write_text('import b\\n' + 'x = 1\\n' * 4)
-            (root / 'b.py').write_text('import a\\n' + 'x = 1\\n' * 4)
+            (root / 'a.py').write_text('import b\n' + 'x = 1\n' * 4)
+            (root / 'b.py').write_text('import a\n' + 'x = 1\n' * 4)
             with patch('hybrid_engine.structure.MAX_NODES', 25):
                 report = analyze_structure(root, ['a.py', 'b.py'])
             self.assertEqual(report['incomplete'], [])
@@ -117,9 +117,9 @@ import('./b');
     def test_ast_partition_count_exhaustion_is_explicit_and_blocks_advisor(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / 'a.py').write_text('import b\\n' + 'x = 1\\n' * 4)
-            (root / 'b.py').write_text('import a\\n' + 'x = 1\\n' * 4)
-            with patch('hybrid_engine.structure.MAX_NODES', 25), \\
+            (root / 'a.py').write_text('import b\n' + 'x = 1\n' * 4)
+            (root / 'b.py').write_text('import a\n' + 'x = 1\n' * 4)
+            with patch('hybrid_engine.structure.MAX_NODES', 25), \
                     patch('hybrid_engine.structure.MAX_AST_PARTITIONS', 1):
                 report = assess_project(root)
             self.assertEqual(report['status'], 'INCOMPLETE')
@@ -130,7 +130,7 @@ import('./b');
     def test_single_ast_larger_than_partition_stays_incomplete(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / 'a.py').write_text('x = 1\\n' * 10)
+            (root / 'a.py').write_text('x = 1\n' * 10)
             with patch('hybrid_engine.structure.MAX_NODES', 25):
                 report = analyze_structure(root, ['a.py'])
             self.assertEqual(report['incomplete'][0]['reason'], 'parse_or_node_limit')
