@@ -38,9 +38,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
+      - name: Use local Python 3.11
+        run: |
+          /opt/homebrew/bin/python3.11 -I -m venv --without-pip "$RUNNER_TEMP/hybrid-python311"
+          "$RUNNER_TEMP/hybrid-python311/bin/python" -I -c "import platform, sys; assert sys.version_info[:2] == (3, 11); assert platform.machine() == 'arm64'; print(sys.version); print(sys.executable)"
+          echo "$RUNNER_TEMP/hybrid-python311/bin" >> "$GITHUB_PATH"
       - name: Test (stdlib)
         run: python -m unittest discover -s tests -v
       - name: CLI smoke test
