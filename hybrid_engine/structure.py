@@ -8,7 +8,8 @@ from pathlib import Path
 
 from .source_io import read_source
 
-MAX_NODES = 50000
+MAX_NODES = 50000  # Strict node cap per bounded AST partition.
+MAX_AST_PARTITIONS = 8  # Hard cap for a single assessment; no unbounded rollover.
 MAX_SOURCE_BYTES = 128 * 1024
 MAX_EDGES = 2000
 SUFFIXES = {'.py', '.js', '.jsx', '.ts', '.tsx'}
@@ -68,6 +69,8 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
     generated = []
     unresolved = []
     nodes_used = 0
+    ast_partitions_used = 0
+    partition_nodes = 0
     for path in sorted(paths):
         try:
             text = reader(root, path, MAX_SOURCE_BYTES).decode('utf-8')
@@ -83,11 +86,12 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
         local_imports = []
         branches = definitions = 0
         if path.endswith('.py'):
+            file_nodes = 0
             try:
                 tree = ast.parse(text)
                 for node in ast.walk(tree):
-                    nodes_used += 1
-                    if nodes_used > MAX_NODES:
+                    file_nodes += 1
+                    if file_nodes > MAX_NODES:
                         raise ValueError('node_budget')
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         definitions += 1
@@ -110,11 +114,22 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
                             local_imports.append((prefix + '.' + alias.name if prefix else alias.name, node.lineno))
                         if node.module:
                             local_imports.append((prefix, node.lineno))
+                # Rollover only between complete files. The file/node/partition
+                # budgets remain explicit and bounded; graph edges are resolved
+                # across all partitions in the common pass below.
+                if ast_partitions_used == 0 or partition_nodes + file_nodes > MAX_NODES:
+                    if ast_partitions_used >= MAX_AST_PARTITIONS:
+                        nodes_used += file_nodes
+                        incomplete.append({'path': path, 'reason': 'ast_partition_budget'})
+                        break
+                    ast_partitions_used += 1
+                    partition_nodes = 0
+                partition_nodes += file_nodes
+                nodes_used += file_nodes
                 kind = 'python_ast'
             except (SyntaxError, ValueError, RecursionError, MemoryError):
+                nodes_used += file_nodes
                 incomplete.append({'path': path, 'reason': 'parse_or_node_limit'})
-                if nodes_used > MAX_NODES:
-                    break
                 continue
             for module, line in local_imports:
                 base = module.replace('.', '/')
@@ -202,7 +217,11 @@ def analyze_structure(root: Path, candidates: list[str], *, reader=None) -> dict
             'unresolved_imports': unresolved,
             'edges': [{'source': a, 'target': b, 'line': n} for a, b, n in edges],
             'issues': issues, 'generated_files_excluded': generated, 'incomplete': incomplete, 'ast_nodes_examined': nodes_used,
-            'limits': {'source_bytes': MAX_SOURCE_BYTES, 'ast_nodes': MAX_NODES, 'edges': MAX_EDGES},
+            'ast_partitions_used': ast_partitions_used,
+            'limits': {'source_bytes': MAX_SOURCE_BYTES, 'ast_nodes': MAX_NODES,
+                       'ast_partitions': MAX_AST_PARTITIONS,
+                       'ast_total_nodes': MAX_NODES * MAX_AST_PARTITIONS,
+                       'edges': MAX_EDGES},
             'limitations': ['Local static imports only; no runtime, aliases, tsconfig paths or dependency execution.',
                             'Python AST resolves source-root modules; src layouts and aliases may be unresolved; ambiguous JS/TS targets are not guessed.',
                             'JS/TS uses a lexical subset, not a full parser; dynamic imports and require are not resolved.',
