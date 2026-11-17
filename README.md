@@ -4,7 +4,7 @@
 
 Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
 
-**Versão:** `v0.10.0` (beta offline) · **Integração v0.11:** em branch de revisão · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão candidata nesta branch:** `v0.11.0` · **Versão integrada à main:** `v0.10.0` · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
@@ -90,7 +90,7 @@ Não dispare verificações hospedadas desnecessariamente.
 
 ➡️ [Comece aqui](docs/COMECE_AQUI.md) · [Comandos prontos](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo universal](docs/AGENT_AUTO.md).
 
-## ✨ Funcionalidades disponíveis na v0.10.0
+## ✨ Funcionalidades v0.10 e incrementos da candidata v0.11
 
 | Recurso | O que entrega |
 | --- | --- |
@@ -177,6 +177,10 @@ O arquivo `reviewed-change.json` **não é gerado automaticamente pela CLI**: de
 Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo universal para agentes](docs/AGENT_AUTO.md).
 
 ## 🧪 Qualidade e estado do projeto
+
+**v0.11.0 candidata em integração:** contém o handoff privado do Advisor com SHA e o `project-audit` read-only, além do protocolo AI-first para Codex/ChatGPT/Claude Code. A PR #17 isolada passou 260 testes no runner ARM64 efêmero; a branch separada de Project Audit passou 254 testes no Mac mini. **Esses resultados não validam automaticamente esta branch combinada**: execute a suíte completa nela antes de integrar. O CI padrão para PRs e main foi restaurado, mas a franquia do GitHub hospedado pode impedir a execução.
+
+
 
 **v0.10.0 — beta offline:** 251/251 testes locais aprovados com Python 3.11 no Mac (HEAD `f028e8b`). Piloto operacional independente no Radar Artístico: 12 achados suspeitos, 12 ordens, cobertura `BOUNDED_COMPLETE`, nenhum arquivo ou HEAD alterado. Evidence Bridge → Advisor preservou `BLOCKED` para evidências contraditórias. **CI hospedado não validado**: o run GitHub Actions 43835400450 falhou, sem logs acessíveis; a franquia informada estava esgotada. A validação local não substitui CI nem pentest.
 
