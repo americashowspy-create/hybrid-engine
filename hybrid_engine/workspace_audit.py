@@ -64,12 +64,14 @@ def audit_workspace(target: Path) -> dict:
     partitions = []
     findings = {}
     orders = {}
+    database_signals = set()
     truncated_evidence = False
     for offset in range(0, len(assigned), BATCH_SIZE):
         paths = assigned[offset:offset + BATCH_SIZE]
         report = assess_project(root, scope_paths=paths, enumeration=tree,
                                 reader=reader)
         advice = advise(report)
+        database_signals.update(report["database_signals"])
         for item in report["findings"]:
             if item["id"] not in findings:
                 if len(findings) >= MAX_FINDINGS:
@@ -127,6 +129,7 @@ def audit_workspace(target: Path) -> dict:
             "evidence_truncated": truncated_evidence,
         },
         "partitions": partitions,
+        "database_signals": sorted(database_signals),
         "findings": sorted(findings.values(), key=lambda x: (
             {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(x["severity"], 9),
             x["path"], x["line"], x["rule"], x["id"])),
