@@ -31,7 +31,7 @@ When the user requests a **comprehensive audit**, project structure review, or i
 
 The optional Python CLI can help perform parts of the assessment. It is not a substitute for source review, cannot magically access external repositories, and cannot certify security or live database policies. Never describe an unrun tool as executed. Use `CONFIRMED`, `SUSPECTED` and `NOT_TESTED` honestly.
 
-## Hybrid 0.11.1 candidate — auto-scoped audits and truthful evidence
+## Hybrid 0.11.1 — auto-scoped audits and truthful evidence
 
 For a large local project, `project-audit` automatically retries the eligible source
 files in bounded exact-path batches when the original single scan reaches its
@@ -47,6 +47,19 @@ Identify the target project separately from this framework. If an AI platform
 restricts advanced cybersecurity activity, comply with the restriction: do not
 rephrase to evade a gate. Continue only genuinely permitted, passive source
 review, or explain the blocker. See `docs/AGENT_COMPATIBILITY.md`.
+
+## v0.11.2 candidate — strict static coverage and private file manifests
+
+The `project-audit` response includes `coverage_summary`, distinguishing
+enumerated regular files from eligible files, those assigned to static scans,
+and those not assigned. Initial and workspace coverage remain separate;
+effective coverage is the workspace coverage when present.
+When CI requests `--strict-coverage`, a genuinely incomplete effective
+static scope exits 1 **after** writing the report, whereas ordinary mode retains
+exit 0 for successful execution. Do not treat exit 0 as a security guarantee.
+A path-by-path manifest is added only on explicit request via
+`--include-file-manifest` and `--output` outside the target. These filenames
+can disclose private project structure and must not be made public.
 
 ## Advisor Safe Handoff — v0.11 experimental
 
