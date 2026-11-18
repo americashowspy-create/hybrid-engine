@@ -5,6 +5,7 @@ reinterpretations. This deliberately does not certify cross-batch graphs.
 """
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 from .assessment import MAX_BYTES, MAX_FILES, SCAN_NAMES, assess_project
@@ -58,6 +59,7 @@ def audit_workspace(target: Path) -> dict:
         eligible.append(rel)
 
     capacity = BATCH_SIZE * MAX_PARTITIONS
+    path_fingerprint = hashlib.sha256("\\n".join(eligible).encode("utf-8")).hexdigest()
     assigned = eligible[:capacity]
     unassigned = len(eligible) - len(assigned)
     reader = SourceReader(root)
@@ -116,6 +118,8 @@ def audit_workspace(target: Path) -> dict:
             "status": "BOUNDED_COMPLETE" if complete else "INCOMPLETE",
             "enumeration": tree.coverage(),
             "eligible_files": len(eligible),
+            "inventory_path_sha256": path_fingerprint,
+            "inventory_hash_scope": "paths_only_not_file_contents",
             "assigned_files": len(assigned),
             "unassigned_files": unassigned,
             "unreadable_or_oversized_files": skipped_or_unreadable,
