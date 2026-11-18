@@ -58,7 +58,7 @@ O JSON mantém `assessment` e `advisor` originais (inclusive `INCOMPLETE`/`BLOCK
 
 A CLI informa `workspace_coverage`, `partitions`, `eligible_files` e `workspace_findings` no resumo quando existe auditoria por lotes. Para reproduzir o comportamento anterior, use `--no-auto-scope`. O comando `assess` isolado mantém o teto de 250 arquivos.
 
-### Cobertura estrita e manifesto privado (v0.11.2 candidata)
+### Cobertura estrita e manifesto privado (v0.11.2)
 
 O JSON do `project-audit` inclui `coverage_summary` tanto em projetos pequenos
 quanto em projetos grandes. Campos: `enumerated_regular_files` (todos os
@@ -147,4 +147,4 @@ Não altere código, banco ou produção, não abra PR, não faça merge/deploy
 nem execute scripts de terceiros sem minha autorização posterior.
 ```
 
-**Compatibilidade:** o protocolo pode ser lido por Codex, Claude Code, chats conectados e outros agentes. Isso não significa que qualquer plataforma leia automaticamente este repositório privado nem que tenha shell, acesso aos arquivos ou GitHub. O agente precisa confirmar essas capacidades antes de reivindicar uma auditoria executada.
+**Compatibilidade:** o protocolo pode ser lido por Codex, Claude Code, chats conectados e outros agentes. Isso não significa que qualquer plataforma leia automaticamente o projeto-alvo (que pode ser privado) nem que tenha shell, acesso aos arquivos ou GitHub. O agente precisa confirmar essas capacidades antes de reivindicar uma auditoria executada.
