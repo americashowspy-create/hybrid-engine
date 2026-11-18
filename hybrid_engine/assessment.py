@@ -88,7 +88,8 @@ DEFAULT_GUIDANCE = (
 )
 
 
-def _inventory(root: Path, tree: Enumeration) -> tuple[list[str], int, int, bool, bool]:
+def _inventory(root: Path, tree: Enumeration, *,
+               selected_paths: set[str] | None = None) -> tuple[list[str], int, int, bool, bool]:
     """Find bounded eligible files without opening any real .env file."""
     found: list[str] = []
     ignored_sensitive = 0
@@ -99,6 +100,8 @@ def _inventory(root: Path, tree: Enumeration) -> tuple[list[str], int, int, bool
         path = root / rel
         name = path.name
         rel = path.relative_to(root).as_posix()
+        if selected_paths is not None and rel not in selected_paths:
+            continue
         if path.is_symlink():
             skipped += 1  # A regular inventory entry changed before reading.
             continue
@@ -202,18 +205,29 @@ def _architecture(root: Path, candidates: list[str], *, has_tests: bool,
     return results, skipped, generated_size_excluded
 
 
-def assess_project(target: Path) -> dict:
-    """Inspect source conservatively and produce reviewable, non-executable advice."""
+def assess_project(target: Path, *, scope_paths: list[str] | None = None,
+                   enumeration: Enumeration | None = None,
+                   reader: SourceReader | None = None) -> dict:
+    """Inspect source conservatively; optional exact-file batches share the root."""
     root = Path(target).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
-    reader = SourceReader(root)
-    tree = enumerate_tree(root, SKIP_DIRS)
-    candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(root, tree)
+    reader = reader or SourceReader(root)
+    tree = enumeration if enumeration is not None else enumerate_tree(root, SKIP_DIRS)
+    selected = None if scope_paths is None else set(scope_paths)
+    if selected is not None:
+        if len(selected) != len(scope_paths) or len(selected) > MAX_FILES:
+            raise ValueError("Scoped assessment requires unique paths within the file budget")
+        if not selected.issubset(tree.files):
+            raise ValueError("Scoped assessment paths must be enumerated regular files")
+    candidates, skipped, ignored_sensitive, truncated, has_tests = _inventory(
+        root, tree, selected_paths=selected)
     general = scan(root, include_paths=set(candidates), enumeration=tree, reader=reader)
-    database = scan_database(root, enumeration=tree, reader=reader)
+    database = scan_database(root, enumeration=tree, reader=reader,
+                             include_paths=selected)
     architecture, arch_skipped, generated_size_excluded = _architecture(
-        root, candidates, has_tests=has_tests, inventory_truncated=truncated, reader=reader)
+        root, candidates, has_tests=has_tests or selected is not None,
+        inventory_truncated=truncated, reader=reader)
     findings = [
         _finding("audit", item["rule"], item["severity"], "security",
                  item["path"], item["line"], item["message"])
@@ -268,7 +282,9 @@ def assess_project(target: Path) -> dict:
         "schema_version": 1, "mode": "static_read_only", "status": status,
         "target": str(root), "stack": general["stack"], "processing": reader.metrics(),
         "coverage": {
-            "scope": "bounded_local_tree", "enumeration": tree.coverage(), "status": "INCOMPLETE" if incomplete else "BOUNDED_COMPLETE",
+            "scope": "selected_local_files" if selected is not None else "bounded_local_tree",
+            "selected_files": len(selected) if selected is not None else None,
+            "enumeration": tree.coverage(), "status": "INCOMPLETE" if incomplete else "BOUNDED_COMPLETE",
             "candidate_files": len(candidates), "general_files_scanned": general["files_scanned"],
             "general_files_skipped": general["files_skipped"],
             "architecture_files_skipped": arch_skipped,
