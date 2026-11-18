@@ -4,9 +4,9 @@ Obrigado por ajudar a testar o framework! O objetivo é receber **evidências de
 
 [Início rápido](docs/COMECE_AQUI.md) · [Exemplos de comando](docs/EXEMPLOS_DE_COMANDOS.md) · [Segurança](docs/SECURITY.md)
 
-## Beta fechado
+## Como participar
 
-O repositório permanece **privado** enquanto os testes iniciais são realizados. Pessoas interessadas precisam receber acesso do responsável; não é necessário (e não é recomendado) compartilhar repositórios privados pessoais com outros testadores.
+O repositório do **Hybrid Engine é público** e licenciado sob MIT. Qualquer pessoa pode consultar as instruções e testar o framework em projetos próprios ou para os quais tenha autorização. **Não é necessário compartilhar repositórios privados com o mantenedor** para experimentar.
 
 Se tiver permissão para criar uma Issue, utilize um título claro, por exemplo:
 `[Beta] HYBRID DEBUG — falhou ao produzir PR Draft`.
@@ -56,6 +56,6 @@ A execução de scripts de repositórios desconhecidos pode produzir efeitos col
 - Os testes executados foram claramente diferenciados dos não executados?
 - Algum passo consumiu CI ou recursos externos desnecessariamente?
 
-O foco da v0.8 é **confiabilidade e simplicidade**. Sugestões que adicionem complexidade devem demonstrar um problema real que resolvem.
+O foco da versão pública v0.11.2 é **confiabilidade, cobertura rastreável e simplicidade**. Sugestões que adicionem complexidade devem demonstrar um problema real que resolvem.
 
 [Voltar ao README](README.md) · [Licença MIT](LICENSE)
