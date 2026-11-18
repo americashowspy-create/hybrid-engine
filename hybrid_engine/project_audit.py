@@ -10,11 +10,12 @@ from pathlib import Path
 from .assessment import MAX_FILES, assess_project
 from .advisor import advise
 from .db_guard import MAX_FILES as DB_MAX_FILES
-from .workspace_audit import audit_workspace
+from .workspace_audit import audit_workspace, single_pass_coverage
 
 
-def project_audit(target: Path, *, auto_scope: bool = True) -> dict:
-    """Collect one baseline, then optional bounded file batches if truncated."""
+def project_audit(target: Path, *, auto_scope: bool = True,
+                  include_manifest: bool = False) -> dict:
+    """Preserve v0.11 baseline, with optional batches and explicit coverage."""
     assessment = assess_project(target)
     advice = advise(assessment)
     coverage = assessment["coverage"]
@@ -23,7 +24,35 @@ def project_audit(target: Path, *, auto_scope: bool = True) -> dict:
         and (coverage["candidate_files"] >= MAX_FILES
              or coverage["db_files_scanned"] >= DB_MAX_FILES)
     )
-    workspace = audit_workspace(target) if needs_batches else None
+    workspace = audit_workspace(target, include_manifest=include_manifest) if needs_batches else None
+    if workspace is not None:
+        wc = workspace["coverage"]
+        summary = {
+            "schema_version": 1,
+            "scope": "automatic_workspace",
+            "enumerated_regular_files": wc["enumerated_regular_files"],
+            "enumeration_complete": (
+                not wc["enumeration"]["truncated"]
+                and wc["enumeration"]["errors"] == 0),
+            "eligible_files": wc["eligible_files"],
+            "assigned_files": wc["assigned_files"],
+            "unassigned_files": wc["unassigned_files"],
+            "unreadable_or_oversized_files": wc["unreadable_or_oversized_files"],
+            "private_env_files_excluded": wc["private_env_files_excluded"],
+            "general_files_scanned": sum(p["general_files_scanned"]
+                                         for p in workspace["partitions"]),
+            "db_files_scanned": sum(p["db_files_scanned"]
+                                    for p in workspace["partitions"]),
+            "first_pass_candidate_files": coverage["candidate_files"],
+            "first_pass_status": coverage["status"],
+            "effective_status": wc["status"],
+            "note": ("Assigned files are allocated to bounded static scans, not "
+                     "proof of runtime coverage or successful review of every concern."),
+        }
+        manifest = workspace.pop("file_manifest", None)
+    else:
+        summary, manifest = single_pass_coverage(
+            target, assessment, include_manifest=include_manifest)
     has_database = bool(
         assessment.get("database_signals")
         or any(item.get("source") == "db_guard" for item in assessment.get("findings", []))
@@ -50,6 +79,7 @@ def project_audit(target: Path, *, auto_scope: bool = True) -> dict:
         "target": assessment["target"],
         "status": assessment["status"],
         "coverage": assessment["coverage"],
+        "coverage_summary": summary,
         "dimensions": matrix,
         "assessment": assessment,
         "advisor": advice,
@@ -66,4 +96,6 @@ def project_audit(target: Path, *, auto_scope: bool = True) -> dict:
     }
     if workspace is not None:
         report["workspace"] = workspace
+    if manifest is not None:
+        report["file_manifest"] = manifest
     return report
