@@ -11,7 +11,7 @@ Você precisa de:
 - Um agente de IA, interface de chat, IDE ou terminal com acesso autorizado a repositórios; para criar PR, é necessária **permissão real de escrita**, não somente leitura.
 - Acesso ao repositório **Hybrid Engine**. O Hybrid Engine é público, mas o projeto alvo pode exigir permissões separadas; conhecer uma URL não concede acesso a repositórios privados.
 - Acesso ao **seu projeto de teste**, de preferência com baixo risco e sem dependências de produção.
-- Permissão para fazer alterações no repositório alvo. Nunca use um repositório de outra pessoa sem autorização.
+- Autorização para **analisar** o projeto. Para modificar código ou abrir PR, será necessária uma **autorização separada** e permissão efetiva de escrita; nunca use um repositório de terceiros sem autorização.
 
 **Não precisa:** escolher um provedor específico, contratar GitHub Pro, copiar o framework para o projeto alvo ou habilitar GitHub Actions. Autentique-se com segurança no ambiente escolhido; nunca cole tokens em conversas.
 
