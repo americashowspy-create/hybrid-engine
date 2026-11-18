@@ -36,8 +36,10 @@ jobs:
           python -m hybrid_engine advise --help
           python -m hybrid_engine project-audit --help
           python -m hybrid_engine project-audit --no-auto-scope --help
+          python -m hybrid_engine project-audit --strict-coverage --help
+          python -m hybrid_engine project-audit --include-file-manifest --help
           python -m hybrid_engine project-audit --target . --output "$RUNNER_TEMP/hybrid-project-audit.json" > /dev/null
-          python -c "import json, os; d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'], 'hybrid-project-audit.json'))); assert d['mode']=='static_read_only' and d['tests']['status']=='NOT_RUN' and d['changes']['target_files_modified']==0"
+          python -c "import json, os; d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'], 'hybrid-project-audit.json'))); assert d['mode']=='static_read_only' and d['tests']['status']=='NOT_RUN' and d['changes']['target_files_modified']==0 and d['coverage_summary']['effective_status'] in ('BOUNDED_COMPLETE', 'INCOMPLETE')"
           python -m hybrid_engine evidence-import --help
           python -m hybrid_engine assess --target . --output "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
           python -m hybrid_engine advise --report "$RUNNER_TEMP/hybrid-assessment.json" > /dev/null
