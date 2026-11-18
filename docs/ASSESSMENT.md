@@ -41,6 +41,8 @@ Falhas, especiais e truncamento tornam a cobertura incompleta. Symlinks e
 diretórios de artefatos são exclusões intencionais, não evidência de segurança.
 `BOUNDED_COMPLETE` significa apenas conclusão do escopo elegível delimitado.
 
+Na candidata v0.11.1, **o comando `assess` isolado mantém o limite de 250 arquivos**; `project-audit` acrescenta, quando a primeira passagem atinge esse teto, uma segunda inspeção automática de arquivos elegíveis em lotes limitados, registrada sob `workspace`. Esse registro só comprova cobertura das verificações por arquivo; imports entre lotes e o estado real do banco continuam não verificados. Consulte [PROJECT_AUDIT.md](PROJECT_AUDIT.md).
+
 O assessment analisa até 250 fontes elegíveis de 256 KiB, com limites independentes
 do DB Guard (250 arquivos/500 achados) e scanner geral (2000 achados).
 Scanners separados também usam o orçamento global. A leitura por descritores
