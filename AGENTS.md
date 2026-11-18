@@ -48,7 +48,7 @@ restricts advanced cybersecurity activity, comply with the restriction: do not
 rephrase to evade a gate. Continue only genuinely permitted, passive source
 review, or explain the blocker. See `docs/AGENT_COMPATIBILITY.md`.
 
-## v0.11.2 candidate — strict static coverage and private file manifests
+## v0.11.2 — strict static coverage and private file manifests
 
 The `project-audit` response includes `coverage_summary`, distinguishing
 enumerated regular files from eligible files, those assigned to static scans,
