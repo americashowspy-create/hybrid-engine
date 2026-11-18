@@ -83,6 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     project_parser.add_argument("--output", type=Path, help="Optional JSON report path")
     project_parser.add_argument("--no-auto-scope", action="store_true",
                                 help="Disable automatic bounded file batches when the single scan truncates")
+    project_parser.add_argument("--strict-coverage", action="store_true",
+                                help="Exit 1 if the effective static coverage is incomplete; still emit the report")
+    project_parser.add_argument("--include-file-manifest", action="store_true",
+                                help="Opt in to private relative path lists (requires --output)")
 
     advisor = sub.add_parser("advise", help="Offline implementation review orders from an assessment")
     advisor.add_argument("--report", type=Path, required=True)
@@ -267,16 +271,24 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError) as exc:
             parser.exit(2, f"hybrid: {exc}\n")
+    strict_coverage_failed = False
     try:
         root = args.target.expanduser().resolve(strict=True)
         if not root.is_dir():
             parser.error("--target must be a directory")
         if args.command == "project-audit":
+            if args.include_file_manifest and not args.output:
+                raise ValueError("--include-file-manifest requires --output outside the target")
             if args.output:
                 destination = args.output.expanduser().resolve()
                 if destination.is_relative_to(root):
                     raise ValueError("Project audit output must be outside the target directory")
-            result = project_audit(root, auto_scope=not args.no_auto_scope)
+            result = project_audit(
+                root, auto_scope=not args.no_auto_scope,
+                include_manifest=args.include_file_manifest)
+            summary = result["coverage_summary"]
+            strict_coverage_failed = (
+                args.strict_coverage and summary["effective_status"] == "INCOMPLETE")
             if args.output:
                 path = write_json(destination, result)
                 output = {
@@ -289,6 +301,14 @@ def main(argv: list[str] | None = None) -> int:
                     "orders": len(result["advisor"].get("work_orders", [])),
                     "tests": "NOT_RUN",
                     "output": str(path),
+                    "effective_coverage": summary["effective_status"],
+                    "enumerated_files": summary["enumerated_regular_files"],
+                    "eligible_files": summary["eligible_files"],
+                    "assigned_files": summary["assigned_files"],
+                    "pending_files": summary["unassigned_files"],
+                    "general_files_scanned": summary["general_files_scanned"],
+                    "unreadable_or_oversized_files": summary["unreadable_or_oversized_files"],
+                    "manifest_included": "file_manifest" in result,
                 }
                 if "workspace" in result:
                     workspace = result["workspace"]
@@ -353,7 +373,7 @@ def main(argv: list[str] | None = None) -> int:
             write_json(paths / "state.json", state)
             output = state
         print(json.dumps(output, ensure_ascii=False, indent=2))
-        return 0
+        return 1 if strict_coverage_failed else 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.exit(2, f"hybrid: {exc}\n")
 
