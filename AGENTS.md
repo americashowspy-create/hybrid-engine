@@ -31,6 +31,23 @@ When the user requests a **comprehensive audit**, project structure review, or i
 
 The optional Python CLI can help perform parts of the assessment. It is not a substitute for source review, cannot magically access external repositories, and cannot certify security or live database policies. Never describe an unrun tool as executed. Use `CONFIRMED`, `SUSPECTED` and `NOT_TESTED` honestly.
 
+## Hybrid 0.11.1 candidate — auto-scoped audits and truthful evidence
+
+For a large local project, `project-audit` automatically retries the eligible source
+files in bounded exact-path batches when the original single scan reaches its
+250-file cap. The JSON contains a separate `workspace` assessment with counts,
+per-batch outcomes, consolidated suspected findings and advisor review orders.
+Keep the **original** `assessment` and `advisor` statuses intact. Never
+describe the first partial pass as complete. Workspace `BOUNDED_COMPLETE`
+means only eligible per-file scans were covered; cross-batch imports/cycles,
+runtime behavior, production security, database state and project tests remain
+unverified. On budget errors, the workspace remains `INCOMPLETE`.
+
+Identify the target project separately from this framework. If an AI platform
+restricts advanced cybersecurity activity, comply with the restriction: do not
+rephrase to evade a gate. Continue only genuinely permitted, passive source
+review, or explain the blocker. See `docs/AGENT_COMPATIBILITY.md`.
+
 ## Advisor Safe Handoff — v0.11 experimental
 
 After a user-selected Advisor order and with explicitly scoped repository access, the optional `hybrid gh-advice-package` command exports a **private** SHA-pinned source bundle for independent review. It does not authenticate the match between an offline assessment and the live repository; always re-check the source before proposing a fix. Export is read-only and never invokes an agent. See `docs/ASSESSMENT.md`.
