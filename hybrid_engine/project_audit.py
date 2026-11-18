@@ -7,17 +7,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .assessment import assess_project
+from .assessment import MAX_FILES, assess_project
 from .advisor import advise
+from .db_guard import MAX_FILES as DB_MAX_FILES
+from .workspace_audit import audit_workspace
 
 
-def project_audit(target: Path) -> dict:
-    """Collect one bounded assessment and one deterministic advice pass."""
+def project_audit(target: Path, *, auto_scope: bool = True) -> dict:
+    """Collect one baseline, then optional bounded file batches if truncated."""
     assessment = assess_project(target)
     advice = advise(assessment)
+    coverage = assessment["coverage"]
+    needs_batches = bool(
+        auto_scope and coverage["truncated"]
+        and (coverage["candidate_files"] >= MAX_FILES
+             or coverage["db_files_scanned"] >= DB_MAX_FILES)
+    )
+    workspace = audit_workspace(target) if needs_batches else None
     has_database = bool(
         assessment.get("database_signals")
         or any(item.get("source") == "db_guard" for item in assessment.get("findings", []))
+        or (workspace is not None and
+            (workspace["database_signals"] or any(
+                item["source"] == "db_guard" for item in workspace["findings"])))
     )
 
     # This matrix describes *tool capabilities*, not a claim that every topic
@@ -31,7 +43,7 @@ def project_audit(target: Path) -> dict:
         "performance_operations": "NOT_VERIFIED",
         "documentation_continuity": "NOT_VERIFIED",
     }
-    return {
+    report = {
         "schema_version": 1,
         "kind": "hybrid.project-audit.v1",
         "mode": "static_read_only",
@@ -49,5 +61,9 @@ def project_audit(target: Path) -> dict:
             "PARTIAL_STATIC does not imply full verification or a security certification.",
             "No live RLS/GRANT tests, production access, runtime tests, model calls, or PR creation.",
             "Review and authorize each proposed change separately.",
+            "Root assessment and its Advisor keep their original status; consult workspace separately when batches were executed.",
         ],
     }
+    if workspace is not None:
+        report["workspace"] = workspace
+    return report
