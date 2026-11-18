@@ -1,6 +1,6 @@
 # Compatibilidade de agentes — Codex, ChatGPT, Claude Code e IDEs
 
-**Versão candidata: 0.11.1.** O Hybrid Engine é um protocolo e uma CLI Python
+**Versão estável na main: 0.11.1; candidata: 0.11.2.** O Hybrid Engine é um protocolo e uma CLI Python
 opcional; **não é um plugin embutido, um modelo de IA, nem uma autorização
 automática para acessar dados, executar comandos ou criar PRs**.
 
@@ -23,12 +23,22 @@ Antes de atribuir um resultado à ferramenta, confirmar:
 5. Há relatório no caminho indicado, fora da árvore do alvo?
 
 Quando o comando `project-audit` atingir o limite de 250 arquivos, a candidata
-0.11.1 executa **automaticamente** lotes adicionais, quando o orçamento permite.
+desde 0.11.1 executa **automaticamente** lotes adicionais, quando o orçamento permite.
 Confirme `workspace.coverage` e `workspace.partitions`. O `assessment` inicial
 pode permanecer `INCOMPLETE`, e seu `advisor` permanecer `BLOCKED`: são estados
 verdadeiros daquela passagem. A conclusão dos lotes não demonstra ciclos de
 imports entre lotes nem segurança de produção. Não invente logs, SHAs, permissões
 ou testes não executados.
+
+## Evidência de cobertura na v0.11.2
+
+O `coverage_summary` explicita arquivos enumerados, atribuídos, não atribuídos
+e efetivamente lidos pelo scanner. Se o agente estiver em CI, peça
+`--strict-coverage` para que a auditoria incompleta resulte em exit code 1,
+ainda com relatório legível. Um exit code 0 não equivale à ausência de
+vulnerabilidades. A lista de nomes por lote é privada e opcional via
+`--include-file-manifest --output /caminho/privado.json`; não divulgue
+manifestos de projetos privados em issues ou conversas públicas.
 
 ## Passo 3 — pedido inicial seguro e claro
 
