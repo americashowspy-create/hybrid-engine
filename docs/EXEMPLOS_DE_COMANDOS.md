@@ -4,6 +4,24 @@
 
 Substitua `OWNER/REPOSITORY` em todos os exemplos. Antes de executar, confirme acesso ao código, permissão de escrita, ferramentas de teste e autorização para PR Draft.
 
+## Primeiro teste — auditoria ampla sem alterar nada
+
+```text
+Utilize o framework https://github.com/americashowspy-create/hybrid-engine
+para revisar o projeto aberto neste workspace (identifique nome, branch e commit).
+
+Leia AGENTS.md e docs/PROJECT_AUDIT.md do framework e confirme que estão acessíveis.
+Faça uma avaliação técnica ampla em modo somente leitura: arquitetura, código,
+banco, dependências, testes e indícios de segurança, sem pentest ativo.
+Se houver Python 3.11+, execute project-audit e detalhe os escopos e limites reais.
+Se o serviço restringir alguma atividade, não contorne a restrição; informe-a
+e continue apenas nas tarefas permitidas.
+Não altere código, credenciais, produção, banco, GitHub nem deploy.
+Apresente evidências e recomendações por prioridade.
+```
+
+[Como testar no Codex e em outros agentes](AGENT_COMPATIBILITY.md).
+
 ## HYBRID AUTO — do diagnóstico à PR Draft
 
 ```text
