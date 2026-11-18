@@ -1,6 +1,24 @@
 # Changelog
 
-## [0.11.1] — candidata, pendente de validação e revisão
+## [0.11.2] — candidata (aguarda revisão e CI)
+
+- `coverage_summary` no `project-audit` com arquivos enumerados,
+  elegíveis, atribuídos, não atribuídos e leituras dos scanners; o resumo
+  compacto mostra os mesmos indicadores, inclusive com `--no-auto-scope`.
+- `--strict-coverage` opcional: código **1** se a cobertura estática
+  efetiva é `INCOMPLETE`; relatório continua sendo gerado. Código **0**
+  mantém o significado de execução bem-sucedida, nunca de segurança certificada.
+  Erros operacionais continuam gerando código **2**.
+- `--include-file-manifest` explicitamente opcional e exigindo `--output`
+  externo à árvore auditada: caminhos relativos por lote e pendências,
+  truncados a 4.096 caminhos, priorizando pendências.
+- Nenhuma saída de conteúdo de código ou `.env` privado; mantém `assessment`
+  e `advisor` da análise original, sem execuções de scripts ou acesso a banco.
+- Testes de regressão com 261 arquivos, 1 lote pendente, privacidade,
+  limites de manifesto e comparação com `--no-auto-scope`.
+- **PENDENTE:** homologação do HEAD desta branch e revisão antes do merge.
+
+## [0.11.1] — integrada à main (18/11/2026, PR #19)
 
 - `project-audit` tenta automaticamente análise offline em lotes de até 250
   arquivos exatos quando a primeira varredura trunca por limite de arquivos.
@@ -13,8 +31,7 @@
 - Guia de compatibilidade Codex/ChatGPT/Claude, sem instruções para contornar
   restrições de segurança e sem alegar integração nativa.
 - Documentação de onboarding e README atualizados, com histórico real da v0.11.0.
-- **NÃO HOMOLOGADA:** testes locais e CI da versão 0.11.1 ainda pendentes.
-  Sem merge na main e sem deploy nesta candidata.
+- **HOMOLOGADA:** GitHub Actions passou 275 testes; validação externa no Codex relatou análise de 261 arquivos elegíveis em dois lotes, sem alterações no projeto sintético. Commit de merge `4b1b3b4`.
 
 ## [0.11.0] — integrada em 2026-11-17
 
