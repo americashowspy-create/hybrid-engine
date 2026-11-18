@@ -4,7 +4,7 @@
 
 Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
 
-**Versão integrada à main:** `v0.11.0` · **Candidata nesta branch:** `v0.11.1` · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão integrada à main:** `v0.11.1` · **Candidata nesta branch:** `v0.11.2` · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
 
 > [!IMPORTANT]
 > O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
@@ -51,11 +51,23 @@ Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Com Python 3.11+ e
 
 ## 🚀 Comece no ambiente de sua preferência
 
-### Novidade da candidata v0.11.1: auditoria automática de projetos grandes
+### v0.11.1: auditoria automática de projetos grandes
 
 Quando `project-audit` atinge o limite de 250 arquivos do assessment único, o Hybrid tenta automaticamente uma segunda análise por **lotes de caminhos exatos**, sem copiar arquivos nem executar código do alvo. O JSON passa a incluir `workspace` com cobertura, lotes, achados consolidados e ordens de revisão; a saída resumida do terminal informa `workspace_coverage` e `partitions`.
 
 **Atenção:** o relatório original `assessment` e seu `advisor` continuam com o status verdadeiro da leitura inicial (possivelmente `INCOMPLETE`). `workspace.coverage=BOUNDED_COMPLETE` significa somente que os arquivos elegíveis enumerados foram examinados por lotes. Importações/ciclos **entre lotes**, estado efetivo do banco, segurança em produção e testes do sistema alvo continuam não verificados. O motor limita o trabalho a 16 lotes de até 250 arquivos e registra qualquer excesso como `INCOMPLETE`. Para manter somente a análise v0.11, use `--no-auto-scope`.
+
+### Candidata v0.11.2: cobertura verificável para auditorias e CI
+
+A CLI `project-audit` acrescenta um `coverage_summary` (em toda execução), com contagens de arquivos **enumerados**, **elegíveis**, **atribuídos à análise**, **pendentes**, **efetivamente lidos pelo scanner geral** e descartados por tamanho/leitura. No modo `--no-auto-scope`, os pendentes referem-se aos arquivos elegíveis não selecionados **na primeira análise**; o DB Guard possui varredura independente. Quando há lotes, a cobertura efetiva usa `workspace.coverage.status`, preservando o estado original da primeira passagem.
+
+- `--strict-coverage`: retorna **código 1** apenas se a cobertura estática efetiva for `INCOMPLETE` (relatório e stdout ainda gerados). Continua retornando **0** para `BOUNDED_COMPLETE` mesmo com achados suspeitos; não atesta segurança. Erros de argumento/execução continuam com código 2. O comportamento padrão não muda.
+- `--include-file-manifest --output /caminho/privado/audit.json`: adiciona opcionalmente caminhos **relativos** dos lotes e dos arquivos não atribuídos, sem valores de fonte ou `.env` privados, com limite de **4.096 caminhos** e contagem de omitidos. Os nomes de arquivos também são informações potencialmente sensíveis: guarde o JSON em local privado. A saída continua proibida dentro do projeto auditado.
+
+```bash
+python3 -m hybrid_engine project-audit --target /projeto --output /tmp/hybrid-audit.json --strict-coverage
+python3 -m hybrid_engine project-audit --target /projeto --output /tmp/hybrid-audit-private.json --include-file-manifest
+```
 
 O protocolo pode ser seguido por **chats com acesso a repositórios, agentes de programação, ferramentas de IDE e executores locais**. A disponibilidade de leitura, escrita, terminal e GitHub depende das permissões reais de cada ambiente.
 
@@ -184,7 +196,7 @@ Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo universal para a
 
 ## 🧪 Qualidade e estado do projeto
 
-**v0.11.0 integrada à main (PR #18):** inclui Advisor Safe Handoff, `project-audit` e AST particionado. A candidata da PR #18 passou **266 testes locais** no commit `670f07e` com `BOUNDED_COMPLETE` no escopo estático examinado; a `main` aponta para o merge `1289684`. **GitHub Actions hospedado não validado**: o run do merge falhou sem passos de teste, com causa não confirmada. **A candidata v0.11.1 desta branch ainda exige sua própria homologação local, CI quando disponível e aprovação antes do merge.**
+**v0.11.0 integrada à main (PR #18):** inclui Advisor Safe Handoff, `project-audit` e AST particionado. A candidata da PR #18 passou **266 testes locais** no commit `670f07e` com `BOUNDED_COMPLETE` no escopo estático examinado; a `main` aponta para o merge `1289684`. **GitHub Actions hospedado não validado**: o run do merge falhou sem passos de teste, com causa não confirmada. **v0.11.1 foi integrada pela PR #19; o GitHub Actions aprovou 275 testes e o piloto externo relatou cobertura de 261/261 arquivos elegíveis. Esta candidata v0.11.2 ainda depende da sua própria validação e revisão.**
 
 
 
@@ -235,4 +247,4 @@ Comece por [Comece aqui](docs/COMECE_AQUI.md), veja os [prompts prontos](docs/EX
 
 **Projeto independente:** combina, em implementação própria, planejamento, investigação, revisão, controle de mudanças e evidências. Não é fork nem integração oficial de ferramentas externas. Referências e créditos técnicos: [Agradecimentos](ACKNOWLEDGEMENTS.md).
 
-Licenciado sob [MIT](LICENSE) · **v0.11.0 na main; v0.11.1 em desenvolvimento** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
+Licenciado sob [MIT](LICENSE) · **v0.11.1 na main; v0.11.2 em desenvolvimento** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
