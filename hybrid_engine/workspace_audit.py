@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from .assessment import MAX_BYTES, MAX_FILES, SCAN_NAMES, assess_project
+from .assessment import MAX_BYTES, MAX_FILES, SCAN_NAMES, _inventory, assess_project
 from .advisor import advise
 from .audit import SCANNABLE, SKIP_DIRS
 from .db_guard import MAX_FILES as DB_MAX_FILES, _candidate as db_candidate
@@ -19,21 +19,17 @@ MAX_PARTITIONS = 16
 MAX_FINDINGS = 1000
 MAX_ORDERS = 1000
 BATCH_SIZE = min(MAX_FILES, DB_MAX_FILES)
+MAX_MANIFEST_PATHS = 4096
 
 
-def audit_workspace(target: Path) -> dict:
-    """Review eligible regular files in bounded exact-path groups.
-
-    BOUNDED_COMPLETE refers only to per-file heuristics across enumerated
-    eligible files. It does not prove complete cross-module architecture,
-    effective database policy, runtime behavior or security.
-    """
+def eligible_inventory(target: Path) -> tuple:
+    """Enumerate paths and metadata only; never read source or private env files."""
     root = Path(target).expanduser().resolve(strict=True)
     if not root.is_dir():
         raise ValueError("Target must be a directory")
     tree = enumerate_tree(root, SKIP_DIRS)
     eligible = []
-    skipped_or_unreadable = 0
+    unreadable = []
     excluded_secret_env = 0
     for rel in sorted(tree.files):
         path = root / rel
@@ -47,16 +43,90 @@ def audit_workspace(target: Path) -> dict:
                 and name not in SCAN_NAMES and not db_candidate(path)):
             continue
         if path.is_symlink():
-            skipped_or_unreadable += 1
+            unreadable.append(rel)
             continue
         try:
             if path.stat().st_size > MAX_BYTES:
-                skipped_or_unreadable += 1
+                unreadable.append(rel)
                 continue
         except OSError:
-            skipped_or_unreadable += 1
+            unreadable.append(rel)
             continue
         eligible.append(rel)
+    return root, tree, eligible, unreadable, excluded_secret_env
+
+
+def build_file_manifest(partitions: list[tuple[int, list[str]]],
+                        unassigned: list[str], unreadable: list[str]) -> dict:
+    """Explicitly opt-in, bounded disclosure of relative paths only.
+
+    Give pending paths priority so the manifest remains useful when the
+    source inventory is larger than the disclosure limit.
+    """
+    remaining = MAX_MANIFEST_PATHS
+    pending = unassigned[:remaining]
+    remaining -= len(pending)
+    unread = unreadable[:remaining]
+    remaining -= len(unread)
+    batches = []
+    for number, paths in partitions:
+        displayed = paths[:remaining]
+        remaining -= len(displayed)
+        batches.append({"number": number, "paths": displayed,
+                        "omitted": len(paths) - len(displayed)})
+    listed = len(pending) + len(unread) + sum(len(p["paths"]) for p in batches)
+    total = len(unassigned) + len(unreadable) + sum(len(paths) for _, paths in partitions)
+    return {
+        "schema_version": 1,
+        "kind": "hybrid.file-manifest.v1",
+        "disclosure": "explicit_opt_in_relative_paths_only",
+        "max_paths": MAX_MANIFEST_PATHS,
+        "listed_paths": listed,
+        "omitted_paths": total - listed,
+        "truncated": listed < total,
+        "unassigned_paths": pending,
+        "unreadable_or_oversized_paths": unread,
+        "batches": batches,
+    }
+
+
+def single_pass_coverage(target: Path, assessment: dict, *,
+                         include_manifest: bool = False) -> tuple[dict, dict | None]:
+    """Summarize the *primary* assessment; do not call DB scans exhaustive."""
+    root, tree, eligible, unreadable, excluded_secret_env = eligible_inventory(target)
+    selected, _, _, _, _ = _inventory(root, tree)
+    selected_set = set(selected)
+    unassigned = [p for p in eligible if p not in selected_set]
+    coverage = assessment["coverage"]
+    summary = {
+        "schema_version": 1,
+        "scope": "initial_assessment",
+        "enumerated_regular_files": len(tree.files),
+        "enumeration_complete": not tree.truncated and tree.errors == 0,
+        "eligible_files": len(eligible),
+        "assigned_files": len(selected),
+        "unassigned_files": len(unassigned),
+        "unreadable_or_oversized_files": len(unreadable),
+        "private_env_files_excluded": excluded_secret_env,
+        "general_files_scanned": coverage["general_files_scanned"],
+        "db_files_scanned": coverage["db_files_scanned"],
+        "effective_status": coverage["status"],
+        "note": ("Unassigned counts files outside the primary assessment candidate set; "
+                 "DB Guard has a separate bounded scan, and neither count implies runtime verification."),
+    }
+    manifest = (build_file_manifest([(1, selected)], unassigned, unreadable)
+                if include_manifest else None)
+    return summary, manifest
+
+
+def audit_workspace(target: Path, *, include_manifest: bool = False) -> dict:
+    """Review eligible files in safe bounded batches under a single root.
+
+    BOUNDED_COMPLETE covers eligible per-file heuristics only. Not a claim
+    about cross-batch graphs, effective RLS, runtime or production security.
+    """
+    root, tree, eligible, unreadable, excluded_secret_env = eligible_inventory(target)
+    skipped_or_unreadable = len(unreadable)
 
     capacity = BATCH_SIZE * MAX_PARTITIONS
     path_fingerprint = hashlib.sha256("\\n".join(eligible).encode("utf-8")).hexdigest()
@@ -93,6 +163,8 @@ def audit_workspace(target: Path) -> dict:
             "last_path": paths[-1],
             "assessment_status": report["status"],
             "coverage_status": report["coverage"]["status"],
+            "general_files_scanned": report["coverage"]["general_files_scanned"],
+            "db_files_scanned": report["coverage"]["db_files_scanned"],
             "findings": len(report["findings"]),
             "advisor_status": advice["status"],
             "source_tests": "NOT_RUN",
@@ -107,7 +179,7 @@ def audit_workspace(target: Path) -> dict:
     )
     status = ("INCOMPLETE" if not complete else
               "REVIEW_REQUIRED" if findings else "NO_FINDINGS")
-    return {
+    result = {
         "schema_version": 1,
         "kind": "hybrid.workspace-audit.v1",
         "mode": "static_read_only",
@@ -118,6 +190,7 @@ def audit_workspace(target: Path) -> dict:
             "status": "BOUNDED_COMPLETE" if complete else "INCOMPLETE",
             "enumeration": tree.coverage(),
             "eligible_files": len(eligible),
+            "enumerated_regular_files": len(tree.files),
             "inventory_path_sha256": path_fingerprint,
             "inventory_hash_scope": "paths_only_not_file_contents",
             "assigned_files": len(assigned),
@@ -157,3 +230,9 @@ def audit_workspace(target: Path) -> dict:
             "Advisor orders are proposals only; source SHAs, approvals and runtime tests are separate.",
         ],
     }
+    if include_manifest:
+        numbered_batches = [(n + 1, assigned[n * BATCH_SIZE:(n + 1) * BATCH_SIZE])
+                            for n in range(len(partitions))]
+        result["file_manifest"] = build_file_manifest(
+            numbered_batches, eligible[capacity:], unreadable)
+    return result
