@@ -2,7 +2,7 @@
 
 **From a plain-language request to a reviewable pull request, with explicit risk and verification gates.**
 
-Hybrid Engine is an **agent-, interface-, and provider-neutral workflow (v0.11.0 on main; v0.11.1 release candidate)** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
+Hybrid Engine is an **agent-, interface-, and provider-neutral workflow (v0.11.1 on main; v0.11.2 release candidate)** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
 
 **[Português](../README.md)** · [Portable agent protocol](../AGENTS.md) · [ChatGPT AUTO guide](CHATGPT_AUTO.md) · [Security](SECURITY.md) · [Contribution guide](../CONTRIBUTING.md)
 
@@ -36,7 +36,7 @@ Report blocked permissions and missing tools explicitly.
 
 A URL grants neither execution tools nor repository access. Read-only integrations cannot create PRs by themselves. This protocol does **not** mean every agent platform has completed independent integration testing.
 
-## v0.11.1 candidate — large project audits
+## v0.11.1 — large project audits
 
 The `project-audit` command now automatically batches up to 250 eligible
 files per scan (maximum 16 batches) if the initial assessment hits the file
@@ -46,6 +46,18 @@ may still be `INCOMPLETE`; cross-batch imports, real database state, dynamic
 security tests and application tests are **NOT_VERIFIED**.
 Use `--no-auto-scope` to disable this behavior.
 See [AI agent compatibility and restrictions](AGENT_COMPATIBILITY.md).
+
+## v0.11.2 candidate — coverage and privacy-aware manifests
+
+`project-audit` adds a `coverage_summary` with enumerated, eligible,
+assigned and unassigned file counts. Add `--strict-coverage` in CI to return
+exit code 1 for incomplete effective static coverage, while still writing the
+report; exit 0 never certifies security. Opt in to a **private** list of relative
+paths per batch and unassigned files with `--include-file-manifest` and
+`--output` outside the target project. Default reports do not include these
+additional path lists. The manifest is bounded to 4096 paths and reports any
+omissions. Do not publish private repository paths.
+
 
 ## Available capabilities
 
