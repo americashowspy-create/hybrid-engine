@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.11.1] — candidata, pendente de validação e revisão
+
+- `project-audit` tenta automaticamente análise offline em lotes de até 250
+  arquivos exatos quando a primeira varredura trunca por limite de arquivos.
+- Limite de 16 lotes, exclusão de .env privados, saídas fora da árvore do alvo,
+  sem invocar scripts, SQL, redes ou operações de GitHub.
+- Relatório `workspace` aditivo, com contagem de arquivos elegíveis,
+  cobertura por lote, achados e ordens consolidados, limites explícitos,
+  sinalização de faltas, separação do estado da varredura original.
+- `--no-auto-scope` mantém o comportamento da v0.11 para comparação.
+- Guia de compatibilidade Codex/ChatGPT/Claude, sem instruções para contornar
+  restrições de segurança e sem alegar integração nativa.
+- Documentação de onboarding e README atualizados, com histórico real da v0.11.0.
+- **NÃO HOMOLOGADA:** testes locais e CI da versão 0.11.1 ainda pendentes.
+  Sem merge na main e sem deploy nesta candidata.
+
+## [0.11.0] — integrada em 2026-11-17
+
+- Project Audit com Assessment + Advisor em modo read-only.
+- Safe Handoff privado com escopo de arquivos e SHA de revisão.
+- Scanner AST particionado e declaração explícita de incompletude.
+- 266 testes locais aprovados na candidata final (HEAD `670f07e`).
+- PR #18 integrada à main em `1289684185e48cfbefc9bea7e3f1fe4f9e2a8513`.
+- CI hospedado falhou sem apresentar etapas; não declarar aprovação.
+
 ## [0.10.0] — 2026-11-17 (beta offline)
 
 Integrado à `main` pela PR #15, após homologação local (251 testes Python 3.11 e piloto
