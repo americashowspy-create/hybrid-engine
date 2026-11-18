@@ -1,6 +1,6 @@
-# Comece aqui — Hybrid Engine v0.11.1 (main), v0.11.2 candidata
+# Comece aqui — Hybrid Engine v0.11.2
 
-Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
+Guia para quem quer testar o Hybrid Engine público **sem precisar entender a implementação em Python**.
 
 [Voltar à página principal](../README.md) · [Prompts prontos](EXEMPLOS_DE_COMANDOS.md) · [Protocolo](../AGENTS.md)
 
@@ -72,7 +72,7 @@ Confira se o agente realmente leu o `AGENTS.md` e executou `project-audit`; some
 
 [Guia de compatibilidade e diagnóstico de bloqueios](AGENT_COMPATIBILITY.md).
 
-## 3B. Indicadores de cobertura (v0.11.2 candidata)
+## 3B. Indicadores de cobertura (v0.11.2 publicada)
 
 O `project-audit` informa arquivos enumerados, elegíveis, atribuídos e
 pendentes sem exigir a publicação de nomes de arquivos. Em CI use
