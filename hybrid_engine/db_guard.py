@@ -70,7 +70,8 @@ def _signal(path: str, content: str) -> set[str]:
     return found
 
 
-def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=None) -> dict:
+def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=None,
+                  include_paths: set[str] | None = None) -> dict:
     """Inspect bounded text files only. Never run SQL or contact a database."""
     reader = reader or read_source
     root = Path(root).expanduser().resolve(strict=True)
@@ -83,6 +84,8 @@ def scan_database(root: Path, *, enumeration: Enumeration | None = None, reader=
     findings_truncated = False
     tree = enumeration if enumeration is not None else enumerate_tree(root, SKIP_DIRS)
     for relative in tree.files:
+        if include_paths is not None and relative not in include_paths:
+            continue
         path = root / relative
         name = path.name
         if path.is_symlink():

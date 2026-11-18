@@ -12,4 +12,9 @@ When asked to use this framework on another project:
 4. Deliver an evidence-based report and prioritized improvement plan **before code changes**.
 5. After a specific authorization, prepare changes on an isolated branch and verify them; PR Draft needs authorization. Never infer permission for merge, deploy, secrets, migrations or production changes.
 
+For v0.11.1 candidate, a large `project-audit` may append a `workspace` report
+from automatically bounded file batches. Report its per-file scope and cross-batch
+limitations separately from the original assessment; do not claim pentest, live
+database checks or project test execution. Honor any provider security gates.
+
 When this repository is referenced by URL from **another working directory**, the agent must actually fetch/read these instructions with available access. Having a `CLAUDE.md` in the Hybrid repository does not make it automatically available to an unrelated project or grant GitHub permissions.

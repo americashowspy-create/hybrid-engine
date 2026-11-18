@@ -81,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     project_parser = sub.add_parser("project-audit", help="Read-only assessment and prioritized advice for an AI reviewer")
     project_parser.add_argument("--target", type=Path, default=Path("."))
     project_parser.add_argument("--output", type=Path, help="Optional JSON report path")
+    project_parser.add_argument("--no-auto-scope", action="store_true",
+                                help="Disable automatic bounded file batches when the single scan truncates")
 
     advisor = sub.add_parser("advise", help="Offline implementation review orders from an assessment")
     advisor.add_argument("--report", type=Path, required=True)
@@ -274,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
                 destination = args.output.expanduser().resolve()
                 if destination.is_relative_to(root):
                     raise ValueError("Project audit output must be outside the target directory")
-            result = project_audit(root)
+            result = project_audit(root, auto_scope=not args.no_auto_scope)
             if args.output:
                 path = write_json(destination, result)
                 output = {
@@ -288,6 +290,13 @@ def main(argv: list[str] | None = None) -> int:
                     "tests": "NOT_RUN",
                     "output": str(path),
                 }
+                if "workspace" in result:
+                    workspace = result["workspace"]
+                    output["workspace_status"] = workspace["status"]
+                    output["workspace_coverage"] = workspace["coverage"]["status"]
+                    output["partitions"] = workspace["coverage"]["partitions"]
+                    output["eligible_files"] = workspace["coverage"]["eligible_files"]
+                    output["workspace_findings"] = len(workspace["findings"])
             else:
                 output = result
         elif args.command == "db-audit":
