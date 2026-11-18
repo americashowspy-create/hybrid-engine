@@ -1,4 +1,4 @@
-# Comece aqui — Hybrid Engine v0.11.1 (candidata)
+# Comece aqui — Hybrid Engine v0.11.1 (main), v0.11.2 candidata
 
 Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
 
@@ -71,6 +71,15 @@ Para uma avaliação inicial, identifique separadamente **framework** e **projet
 Confira se o agente realmente leu o `AGENTS.md` e executou `project-audit`; somente mencionar a URL não comprova execução. Em projetos grandes, examine `workspace` por lotes e nunca transforme `BOUNDED_COMPLETE` de arquivos em certificação de segurança.
 
 [Guia de compatibilidade e diagnóstico de bloqueios](AGENT_COMPATIBILITY.md).
+
+## 3B. Indicadores de cobertura (v0.11.2 candidata)
+
+O `project-audit` informa arquivos enumerados, elegíveis, atribuídos e
+pendentes sem exigir a publicação de nomes de arquivos. Em CI use
+`--strict-coverage` para detectar cobertura `INCOMPLETE` pelo código de
+saída 1 (o relatório continua gerado). Para manifestos de arquivos com nome,
+inclua **somente quando autorizado** `--include-file-manifest` junto com
+`--output` privado e fora da pasta auditada.
 
 ## 4. Escolha um modo de teste
 
