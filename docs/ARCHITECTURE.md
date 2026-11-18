@@ -1,4 +1,6 @@
-# Architecture — v0.2.0
+# Architecture — Hybrid Engine v0.11.2 (visão geral)
+
+Este documento descreve as camadas arquiteturais originalmente implementadas. A evolução desde a v0.10 acrescentou `assess`, `advise`, `evidence-import`, `project-audit`, DB Guard, análise estrutural por partições, `workspace` com lotes de arquivos e `coverage_summary`. Na v0.11.2, `--strict-coverage` e `--include-file-manifest` ampliam a rastreabilidade de auditorias locais sem executar o projeto-alvo. Veja [README](../README.md), [Assessment](ASSESSMENT.md) e [Project Audit](PROJECT_AUDIT.md).
 
 ## Layer model
 

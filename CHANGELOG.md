@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.11.2] — candidata (aguarda revisão e CI)
+## [0.11.2] — integrada à main (18/11/2026, PR #20)
 
 - `coverage_summary` no `project-audit` com arquivos enumerados,
   elegíveis, atribuídos, não atribuídos e leituras dos scanners; o resumo
@@ -16,7 +16,7 @@
   e `advisor` da análise original, sem execuções de scripts ou acesso a banco.
 - Testes de regressão com 261 arquivos, 1 lote pendente, privacidade,
   limites de manifesto e comparação com `--no-auto-scope`.
-- **PENDENTE:** homologação do HEAD desta branch e revisão antes do merge.
+- **VALIDADA:** 287 testes Python 3.11 aprovados na [PR #20](https://github.com/americashowspy-create/hybrid-engine/pull/20), com smoke CLI e CI hospedado aprovados na PR ([run #44286423222](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44286423222)) e no commit de integração da main ([run #44288317307](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44288317307)). Merge: `71b83204135fc2adde959149f20de2bcc98f141a`. Testes externos específicos da 0.11.2 com outros agentes permanecem não verificados.
 
 ## [0.11.1] — integrada à main (18/11/2026, PR #19)
 

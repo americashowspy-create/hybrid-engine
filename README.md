@@ -1,250 +1,196 @@
 # ⚡ Hybrid Engine
 
-**Do pedido à Pull Request, com diagnóstico, controle de risco e evidências.**
+**Do pedido à análise. Da análise à mudança revisável — com evidências, limites e controle humano.**
 
-Um framework **independente de agente, modelo e interface** para organizar auditorias, correções e desenvolvimento de software. Reúne, em componentes próprios, **planejamento orientado a objetivos, investigação de problemas, revisão de mudanças, seleção de fluxos, testes e evidências** — sem exigir um fornecedor específico.
+O **Hybrid Engine** é um framework público e independente de fornecedor para orientar agentes de IA no diagnóstico, na revisão e na evolução de software. Combina um **protocolo portátil** (Codex, Claude Code, ChatGPT com ferramentas, IDEs e outros) com uma **CLI Python opcional** de análise estática e integração controlada com GitHub.
 
-**Versão integrada à main:** `v0.11.1` · **Candidata nesta branch:** `v0.11.2` · **Python:** 3.11+ (CLI opcional) · **Licença:** MIT · **Idioma:** Português / [English](docs/README_EN.md)
+**Versão atual: `0.11.2`** · Branch `main` · Python **3.11+** · Licença [MIT](LICENSE) · Repositório **público** · [English](docs/README_EN.md)
 
-> [!IMPORTANT]
-> O Hybrid Engine **não é uma IA própria nem um plugin nativo de uma plataforma**. É um protocolo portátil com ferramentas Python opcionais. O agente escolhido precisa de acesso real ao código, recursos de execução e autorização para cada ação. Colar uma URL não instala ferramentas nem concede acesso.
+> **Importante:** o Hybrid **não é um modelo de IA**, não é plugin nativo, não substitui o raciocínio do agente e não concede automaticamente acesso a código ou sistemas. Um agente precisa de **ferramentas e permissões reais**. Auditorias amplas são **somente leitura por padrão**; correções, PRs, merges e deploys exigem autorização apropriada.
 
-**[Auditoria completa com IA](docs/PROJECT_AUDIT.md)** · **[Compatibilidade com Codex e agentes](docs/AGENT_COMPATIBILITY.md)** · **[Comece em 5 minutos](docs/COMECE_AQUI.md)** · **[Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md)** · **[Protocolo oficial](AGENTS.md)** · **[Segurança](docs/SECURITY.md)** · **[Contribuir](CONTRIBUTING.md)**
+[Comece aqui](#-comece-em-3-passos) · [Recursos](#-o-que-já-funciona) · [Terminal](#-uso-pelo-terminal) · [Evidências](#-validação-e-evidências) · [Prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo dos agentes](AGENTS.md) · [English](docs/README_EN.md)
 
 ---
 
-## O que o Hybrid Engine faz?
+## 🎯 Qual problema resolve?
 
-```text
-Pedido no agente de IA ou terminal de sua escolha
-                 │
-                 ▼
- Entender objetivo e repositório
-                 │
-                 ▼
- Auditar e investigar (escopo definido)
-                 │
-                 ▼
- Planejar a menor mudança segura
-                 │
-                 ▼
- Branch isolada + correção revisável
-                 │
-                 ▼
- Testes / evidências / limites
-                 │
-                 ▼
- Pull Request DRAFT + relatório + rollback
-```
+Pedidos como “audite meu sistema” ou “corrija meu projeto” podem produzir confusão: **qual é o projeto-alvo? qual commit foi examinado? o que realmente rodou? quais riscos estão comprovados? há autorização para alterar código?**
 
-A ação de escrever código é feita pelo **agente conectado** (ou por um desenvolvedor). A CLI auxilia no planejamento, na auditoria, na preparação do pacote de fontes e nas validações; **não inventa correções sozinha**.
+O Hybrid organiza a resposta em etapas auditáveis:
 
-## 🧠 Auditoria completa gerenciada por uma IA
+~~~text
+Solicitação do usuário
+         ↓
+Identificar projeto-ALVO, branch, SHA e permissões
+         ↓
+Inspecionar e registrar escopo, evidências e limitações
+         ↓
+Propor correções em ordem de prioridade
+         ↓
+[AUTORIZAÇÃO SEPARADA] agente implementa mudança mínima
+         ↓
+Branch isolada + testes reais + PR Draft
+         ↓
+Revisão humana; merge/deploy somente quando autorizados
+~~~
 
-O caso de uso principal é **você solicitar uma análise a Codex, ChatGPT, Claude Code ou outro agente com acesso real ao seu projeto**. O agente usa este repositório como protocolo técnico, consulta o código, emprega as ferramentas Hybrid disponíveis e entrega **relatório + melhorias priorizadas**, sem modificar nada por conta própria.
+**O repositório do Hybrid Engine é a ferramenta. O projeto informado pelo usuário é o alvo.** Não confundir os dois faz parte do protocolo. A ferramenta não promete que uma IA entendeu perfeitamente um pedido: exige que o agente **declare sua interpretação e as evidências**.
 
-- **Projeto novo:** arquitetura, segurança, dados, plano e critérios antes de implementar.
-- **Projeto em andamento:** auditoria do estado atual, riscos e melhorias incrementais.
-- **Projeto existente:** revisão por dimensões e roadmap de modernização.
+## 🚀 Comece em 3 passos
 
-Comece por **[HYBRID PROJECT AUDIT](docs/PROJECT_AUDIT.md)**. Com Python 3.11+ e checkout local, a entrada integrada é `python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-project-audit.json` (relatório estático, **não** auditoria total automática). Diferentemente do fluxo `HYBRID AUTO` focado em um problema, esse modo organiza uma revisão de várias dimensões com escopo e cobertura declarados. **Uma análise ampla não significa pentest, acesso a produção ou ausência de riscos.** A primeira entrega é um relatório; correções e PRs requerem comando posterior e autorização.
+### 1. Escolha um projeto sob seu controle
 
-## 🚀 Comece no ambiente de sua preferência
+Abra um repositório num agente que realmente possa acessá-lo (por exemplo, Codex, Claude Code, ChatGPT conectado ao GitHub ou uma IDE). Se você informar **apenas um site público**, o agente poderá avaliar somente o que estiver publicamente acessível e permitido; não poderá afirmar ter examinado código, banco ou fluxos internos.
 
-### v0.11.1: auditoria automática de projetos grandes
+### 2. Copie este prompt para a primeira análise
 
-Quando `project-audit` atinge o limite de 250 arquivos do assessment único, o Hybrid tenta automaticamente uma segunda análise por **lotes de caminhos exatos**, sem copiar arquivos nem executar código do alvo. O JSON passa a incluir `workspace` com cobertura, lotes, achados consolidados e ordens de revisão; a saída resumida do terminal informa `workspace_coverage` e `partitions`.
-
-**Atenção:** o relatório original `assessment` e seu `advisor` continuam com o status verdadeiro da leitura inicial (possivelmente `INCOMPLETE`). `workspace.coverage=BOUNDED_COMPLETE` significa somente que os arquivos elegíveis enumerados foram examinados por lotes. Importações/ciclos **entre lotes**, estado efetivo do banco, segurança em produção e testes do sistema alvo continuam não verificados. O motor limita o trabalho a 16 lotes de até 250 arquivos e registra qualquer excesso como `INCOMPLETE`. Para manter somente a análise v0.11, use `--no-auto-scope`.
-
-### Candidata v0.11.2: cobertura verificável para auditorias e CI
-
-A CLI `project-audit` acrescenta um `coverage_summary` (em toda execução), com contagens de arquivos **enumerados**, **elegíveis**, **atribuídos à análise**, **pendentes**, **efetivamente lidos pelo scanner geral** e descartados por tamanho/leitura. No modo `--no-auto-scope`, os pendentes referem-se aos arquivos elegíveis não selecionados **na primeira análise**; o DB Guard possui varredura independente. Quando há lotes, a cobertura efetiva usa `workspace.coverage.status`, preservando o estado original da primeira passagem.
-
-- `--strict-coverage`: retorna **código 1** apenas se a cobertura estática efetiva for `INCOMPLETE` (relatório e stdout ainda gerados). Continua retornando **0** para `BOUNDED_COMPLETE` mesmo com achados suspeitos; não atesta segurança. Erros de argumento/execução continuam com código 2. O comportamento padrão não muda.
-- `--include-file-manifest --output /caminho/privado/audit.json`: adiciona opcionalmente caminhos **relativos** dos lotes e dos arquivos não atribuídos, sem valores de fonte ou `.env` privados, com limite de **4.096 caminhos** e contagem de omitidos. Os nomes de arquivos também são informações potencialmente sensíveis: guarde o JSON em local privado. A saída continua proibida dentro do projeto auditado.
-
-```bash
-python3 -m hybrid_engine project-audit --target /projeto --output /tmp/hybrid-audit.json --strict-coverage
-python3 -m hybrid_engine project-audit --target /projeto --output /tmp/hybrid-audit-private.json --include-file-manifest
-```
-
-O protocolo pode ser seguido por **chats com acesso a repositórios, agentes de programação, ferramentas de IDE e executores locais**. A disponibilidade de leitura, escrita, terminal e GitHub depende das permissões reais de cada ambiente.
-
-| Ambiente | Como iniciar | Requisito para alterar código |
-| --- | --- | --- |
-| **Chat com ferramentas** | Abra uma conversa e permita o acesso ao framework e ao projeto. | A conexão precisa oferecer **escrita**, não somente leitura. |
-| **Agente de programação / IDE** | Abra o projeto localmente ou conecte o repositório e peça a leitura de `AGENTS.md`. | O agente precisa de acesso autorizado ao código, Git e ferramentas de execução. |
-| **Terminal / automação** | Utilize a CLI Python opcional e um agente confiável, se necessário. | A CLI valida e organiza propostas, mas não gera patches arbitrários sozinha. |
-
-**Comando universal para copiar:**
-
-```text
-HYBRID AUTO — v0.10.0
-
-Framework:
+~~~text
+Quero utilizar o Hybrid Engine:
 https://github.com/americashowspy-create/hybrid-engine
 
-Projeto:
-https://github.com/OWNER/REPOSITORY
+PROJETO-ALVO: https://github.com/OWNER/REPOSITORY
 
-Leia AGENTS.md e docs/AGENT_AUTO.md na branch main do framework
-e as instruções do projeto alvo.
+Leia AGENTS.md e docs/PROJECT_AUDIT.md do Hybrid.
+Identifique e confirme qual projeto, branch e commit você pode acessar.
+Analise arquitetura, qualidade, dependências, dados, confiabilidade
+e riscos defensivos, de acordo com as ferramentas realmente disponíveis.
 
-Inspecione a branch principal, o SHA atual e as PRs existentes.
-Identifique UM problema real e de baixo risco, investigue a causa e
-proponha a menor correção segura. Se autorizado e tecnicamente possível,
-implemente em uma branch isolada, execute testes seguros e abra PR Draft.
+Se houver checkout local e Python 3.11+, execute project-audit e
+informe a versão, os comandos executados, a cobertura e os limites.
+Caso não consiga executar algo, marque NOT_RUN ou NOT_VERIFIED.
+Diferencie achados comprovados de suspeitas; não invente resultados.
 
-Entregue diagnóstico, arquivos/SHAs, comandos e resultados de testes,
-riscos, limitações, links reais e rollback. Informe qualquer bloqueio
-de acesso ou ferramenta sem inventar ações ou evidências.
+Quero apenas o diagnóstico e uma lista priorizada de melhorias.
+Não altere código, banco, credenciais, infraestrutura ou produção;
+não faça commits, PRs, merges, deploys ou testes invasivos.
+~~~
 
-Não faça merge, deploy, migrações nem alterações em produção.
-Não dispare verificações hospedadas desnecessariamente.
-```
+Substitua `OWNER/REPOSITORY` pelo **seu** projeto, não pelo próprio Hybrid. Depois do diagnóstico, selecione quais melhorias deseja autorizar.
 
-**Importante:** compreender o protocolo é diferente de conseguir executá-lo. Sem ferramentas de escrita, o resultado correto é auditoria e proposta — **não uma PR inventada**.
+### 3. Verifique o resultado
 
-➡️ [Comece aqui](docs/COMECE_AQUI.md) · [Comandos prontos](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo universal](docs/AGENT_AUTO.md).
+Peça **SHA real, arquivos e linhas relevantes, cobertura, comandos e saídas**, além de resultados `PASSED` / `FAILED` / `NOT_RUN`. Um deploy `READY` ou uma IA afirmando que “usou o Hybrid” **não comprova** que as ferramentas foram executadas.
 
-## ✨ Funcionalidades v0.10 e incrementos da candidata v0.11
+[Guia para iniciantes](docs/COMECE_AQUI.md) · [Prompt genérico para sites e repositórios](docs/AGENT_COMPATIBILITY.md) · [Exemplos de tarefas](docs/EXEMPLOS_DE_COMANDOS.md).
+
+## ✨ O que já funciona
 
 | Recurso | O que entrega |
 | --- | --- |
-| **Audit Intelligence** | `assess` produz diagnóstico offline com cobertura e limites explícitos, sem executar código do projeto. |
-| **Implementation Advisor** | `advise` transforma achados em ordens determinísticas de revisão; não aplica patches. |
-| **Advisor Safe Handoff (v0.11 experimental)** | `gh-advice-package` exporta pacote privado vinculado a SHA, para revisão por agente, sem gerar patches ou alterar o GitHub. |
-| **Evidence Bridge** | `evidence-import` recebe JSON/SARIF limitados, preserva proveniência e bloqueia evidências externas contraditórias. |
-| **Roteamento inteligente de tarefas** | HYBRID AUTO direciona a auditoria, investigação, correção ou planejamento conforme o objetivo. |
-| **Planejamento e especificação** | Fluxos AUDIT / AUDIT-FIX / DEBUG / BUILD / REVIEW / STATUS, com critérios de aceite e entregas verificáveis. |
-| **Investigação e revisão** | Análise da causa de problemas, inspeção estática, revisão de mudanças e identificação de riscos com escopo explícito. |
-| **Organização e continuidade** | Estado local em `.hybrid/`, plano estruturado e evidências documentadas para retomar o trabalho. |
-| **Escopo exato e SHA** | Work orders vinculadas ao commit e aos arquivos auditados; rejeição de alterações fora do escopo. |
-| **Pacote para agente** | `gh-chat-package` exporta código auditado em arquivo privado, para um agente autorizado. |
-| **Prévia e PR Draft** | `gh-execute` valida um manifesto; `--apply` autoriza somente branch nova e PR Draft. |
-| **Verificação de CI** | `gh-verify` consulta checks reais do HEAD da PR; não dispara testes nem inventa aprovação. |
-| **Acompanhamento opcional** | `gh-task` usa GitHub Issues como diário da tarefa, com alterações explícitas. |
-| **Adaptador agnóstico** | `gh-agent` suporta um executável local confiável via JSON/stdio; pode aproveitar habilidades do agente escolhido, mas **não inclui catálogo nativo de skills**. |
+| **`project-audit`** | Relatório JSON somente leitura combinando Assessment e Advisor; não executa scripts do projeto-alvo. |
+| **Auditoria automática de projetos grandes (v0.11.1)** | Segunda análise em lotes **exatos de até 250 arquivos**, até **16 lotes / 4.000 arquivos elegíveis atribuídos**, quando a primeira leitura alcança o teto. |
+| **Resumo de cobertura (v0.11.2)** | `coverage_summary` informa arquivos enumerados, elegíveis, atribuídos, pendentes, descartados e contagens efetivamente examinadas pelos scanners. |
+| **Cobertura estrita para CI (v0.11.2)** | `--strict-coverage` retorna **1** se a cobertura estática efetiva ficar `INCOMPLETE`, ainda gravando o relatório; **0 não certifica segurança**. |
+| **Manifesto opcional (v0.11.2)** | `--include-file-manifest` lista caminhos relativos por lote e pendências com opt-in, até **4.096 nomes**, exigindo saída fora do projeto. |
+| **Audit Intelligence / DB Guard** | Heurísticas estáticas de código, imports locais, estrutura, workspaces, configurações e indícios de problemas SQL/RLS. |
+| **Implementation Advisor** | `advise` transforma achados em ordens de revisão e prioridades, sem aplicar patches por conta própria. |
+| **Evidence Bridge** | `evidence-import` recebe evidências JSON/SARIF dentro de limites e mantém informações de origem. |
+| **Protocolos para agentes** | Fluxos `AUTO`, `AUDIT`, `AUDIT-FIX`, `DEBUG`, `BUILD`, `REVIEW` e `STATUS`. |
+| **GitHub com permissão** | Ferramentas `gh-audit`, `gh-workorder`, `gh-chat-package`, `gh-advice-package`, `gh-execute`, `gh-verify`, `gh-task` e outras. Branch e PR Draft apenas nos fluxos compatíveis e com autorização explícita. |
+| **Rastreabilidade** | Registro de cobertura, limites, resultados de testes, evidências, SHAs, propostas e caminhos de rollback. |
 
-**Limites importantes:** o scanner **não é pentest**; uma auditoria ampla pode parar no limite de 250 arquivos; o fluxo por pacote usa até 20 arquivos exatos (até 64 KiB por fonte). Correções arbitrárias exigem um agente com capacidade de editar código. Não há merge, deploy ou acesso à produção automáticos.
+A CLI local usa **biblioteca padrão Python em tempo de execução**; não consome uma API de IA por si só. Custos de agentes, runners ou plataformas externas são separados.
 
-## 🧭 Escolha o comando certo
+## 🔍 Como interpretar a auditoria
 
-| Comando | Quando usar |
-| --- | --- |
-| `HYBRID AUTO` | “Analise e decida a abordagem adequada.” |
-| `HYBRID AUDIT` | “Quero entender problemas e riscos, sem alterar código.” |
-| `HYBRID AUDIT-FIX` | “Investigue e corrija algo comprovado, com controles.” |
-| `HYBRID DEBUG` | “Tenho um erro específico para reproduzir e corrigir.” |
-| `HYBRID BUILD` | “Quero desenvolver uma funcionalidade com critérios de aceite.” |
-| `HYBRID REVIEW` | “Revise um conjunto de mudanças ou uma PR.” |
-| `HYBRID STATUS` | “Retome uma tarefa a partir de estado/evidências disponíveis.” |
+A versão 0.11.2 mantém a primeira leitura em `assessment` e as recomendações iniciais em `advisor`. Quando o limite de arquivos exige lotes, inclui `workspace`; o resumo `coverage_summary` indica o estado **efetivo** da cobertura.
 
-Todos são **instruções portáteis de workflow**, não comandos nativos garantidos em uma plataforma específica.
+- **`enumerated_regular_files`**: arquivos regulares encontrados, inclusive os não elegíveis.
+- **`eligible_files`**: arquivos elegíveis segundo os tipos, tamanhos e limites suportados.
+- **`assigned_files` / `unassigned_files`**: arquivos atribuídos à leitura por lotes ou que ficaram pendentes. Na opção `--no-auto-scope`, referem-se à seleção da primeira passagem.
+- **`general_files_scanned` / `db_files_scanned`**: contagens próprias dos scanners; não representam testes funcionais, autenticação real ou segurança comprovada.
+- **`BOUNDED_COMPLETE`**: conclusão do **escopo estático delimitado**, não certificação de ausência de vulnerabilidades. Relações entre lotes, comportamento em produção, backups, permissões efetivas de banco e testes da aplicação exigem verificações adicionais.
+- **`INCOMPLETE`**: trabalho truncado, arquivo inacessível ou limite atingido; quantidade de arquivos não enumerados pode ser desconhecida.
 
-## 🗄️ DB Guard — primeira fase experimental v0.9
+O `--strict-coverage` altera **apenas o código de saída** em uma execução válida: `0` para cobertura estática efetiva concluída, `1` para incompleta e `2` para erro operacional/de argumentos. Não falha simplesmente porque encontrou achados suspeitos. Sem a opção, o comportamento de sucesso técnico permanece o anterior.
 
-O módulo opcional **DB Guard** amplia o protocolo com uma auditoria estática e offline de riscos de banco de dados, sem credenciais nem conexão com produção. Detecta indícios de políticas inseguras, variáveis privilegiadas públicas, tipos monetários imprecisos e migrations destrutivas. **Não valida RLS efetivo, backups, custos reais ou desempenho do banco.**
+**Privacidade:** o manifesto de nomes é **desativado por padrão**. `--include-file-manifest` exige `--output` externo à árvore-alvo, lista no máximo 4.096 caminhos e registra omissões. Não inclui os conteúdos dos arquivos nem valores de `.env` privados; **os próprios nomes ainda podem ser sensíveis**, portanto não publique relatórios privados.
 
-Na v0.9, o comando disponível é `hybrid db-audit --target /caminho/do/projeto`. O fluxo `hybrid run` anexa a análise quando identificar uso de banco de dados. [Documentação e limites](docs/DB_GUARD.md).
+## 💻 Uso pelo terminal
 
-## 💻 Uso opcional pelo terminal
+Para executar com **Python 3.11+** a partir de um clone local:
 
-A CLI é feita em Python, usa apenas a biblioteca padrão em tempo de execução e não requer assinatura de modelo. Na raiz de um clone do repositório:
-
-```bash
-python3 -m pip install .
-hybrid --version
-hybrid init --target /caminho/do/projeto
-hybrid inspect --target /caminho/do/projeto
-hybrid run --target /caminho/do/projeto --intent "audite este projeto"
-hybrid status --target /caminho/do/projeto
-```
-
-`hybrid run` **planeja e audita**; só tenta executar testes existentes com `--tests` (revise esses scripts antes, pois podem ter efeitos colaterais). Ele **não edita código automaticamente**.
-
-Operações remotas via GitHub:
-
-```bash
-# Auditoria remota, sem alteração no GitHub:
-hybrid gh-audit --repo OWNER/REPOSITORY --ref main
-
-# Ordem de trabalho e pacote de código, limitados a arquivo específico:
-hybrid gh-chat-package --repo OWNER/REPOSITORY \
-  --goal "HYBRID DEBUG: corrigir erro" \
-  --path src/app.py --output /tmp/hybrid-chat.json
-
-# Conferir manifesto preparado por um agente (somente preview):
-hybrid gh-execute --bundle /tmp/hybrid-chat.json \
-  --manifest /tmp/reviewed-change.json
-
-# Se expressamente autorizado, adicionar --apply cria APENAS uma PR Draft.
-```
-
-O arquivo `reviewed-change.json` **não é gerado automaticamente pela CLI**: deve conter as alterações preparadas e revisadas por um agente ou desenvolvedor. Para repositórios privados, a CLI usa um token GitHub de escopo mínimo (`GH_TOKEN`); num ambiente conectado, o acesso é realizado pelas ferramentas efetivamente disponíveis, quando autorizadas. [Guia técnico do adaptador](docs/GITHUB_ADAPTER.md).
-
-## 🔒 Segurança, privacidade e custos
-
-- **Sem ações silenciosas de alto impacto:** mudanças em produção, migrações, credenciais, merge e deploy exigem autorização separada.
-- **Mudanças rastreáveis:** branch isolada, validação de SHAs, PR Draft e instrução de rollback.
-- **Resultados honestos:** `PASSED`, `FAILED` e `NOT_RUN` têm significados distintos; check ausente não é aprovação.
-- **Código privado:** confirme quem terá acesso aos arquivos antes de usar provedores/agentes externos; não compartilhe tokens nem bundles em issues ou logs.
-- **Custo controlado:** testes locais não usam minutos de runners hospedados pelo GitHub, mas outros ambientes (por exemplo, sandboxes) **podem consumir franquia ou gerar cobrança própria**.
-
-Leia as [regras de segurança](docs/SECURITY.md) e o [protocolo universal para agentes](docs/AGENT_AUTO.md).
-
-## 🧪 Qualidade e estado do projeto
-
-**v0.11.0 integrada à main (PR #18):** inclui Advisor Safe Handoff, `project-audit` e AST particionado. A candidata da PR #18 passou **266 testes locais** no commit `670f07e` com `BOUNDED_COMPLETE` no escopo estático examinado; a `main` aponta para o merge `1289684`. **GitHub Actions hospedado não validado**: o run do merge falhou sem passos de teste, com causa não confirmada. **v0.11.1 foi integrada pela PR #19; o GitHub Actions aprovou 275 testes e o piloto externo relatou cobertura de 261/261 arquivos elegíveis. Esta candidata v0.11.2 ainda depende da sua própria validação e revisão.**
-
-
-
-**v0.10.0 — beta offline:** 251/251 testes locais aprovados com Python 3.11 no Mac (HEAD `f028e8b`). Piloto operacional independente no Radar Artístico: 12 achados suspeitos, 12 ordens, cobertura `BOUNDED_COMPLETE`, nenhum arquivo ou HEAD alterado. Evidence Bridge → Advisor preservou `BLOCKED` para evidências contraditórias. **CI hospedado não validado**: o run GitHub Actions 43835400450 falhou, sem logs acessíveis; a franquia informada estava esgotada. A validação local não substitui CI nem pentest.
-
-**Histórico v0.9:** 135 testes Python 3.11.16 aprovados no Mac; piloto anterior no Radar com 35 arquivos e seis alertas SQL suspeitos, sem alterações no projeto nem no banco.
-
-A v0.8 teve **124 testes Python aprovados em execução offline isolada**, incluindo quatro casos de ponta a ponta com um **GitHub simulado**; os 33 arquivos Python foram comparados ao commit testado via Git blob SHA. Essa evidência está registrada na [PR #9](https://github.com/americashowspy-create/hybrid-engine/pull/9).
-
-**O que isso comprova:** funcionamento da suíte e das simulações naquele commit. O framework implementa seus próprios fluxos de planejamento, diagnóstico e validação; **não incorpora integralmente o código de ferramentas externas**. **O que não comprova:** que todo projeto de terceiros funcionará, que um agente externo terá acesso ou que o CI hospedado passou. Um piloto em repositório externo deve ser avaliado separadamente.
-
-Para contribuir ou validar localmente:
-
-```bash
+~~~bash
+git clone https://github.com/americashowspy-create/hybrid-engine.git
+cd hybrid-engine
+python3 -m hybrid_engine --version
 python3 -m unittest discover -s tests -v
-python3 -m compileall -q hybrid_engine tests
-python3 -m hybrid_engine --help
-```
+~~~
 
-## Audit Intelligence, Advisor e Evidence Bridge — beta offline
+Também é possível instalar localmente com `python3 -m pip install .` para usar o comando `hybrid`.
 
-Disponível na `main` a partir da PR #15: `assess` combina scanners offline,
-imports/estrutura local e package managers/workspaces. `advise --report` gera ordens
-de revisão sem aplicar patches; `evidence-import --report` recebe JSON/SARIF offline
-sem executar ferramentas. Esta versão beta foi homologada localmente, mas o CI hospedado
-continua não verificado; não é certificação de segurança.
-[Contratos, exemplos e limites](docs/ASSESSMENT.md) · [Evidências](docs/EXECUTION_PLAN.md).
+**Auditoria padrão (leitura estática, saída fora do alvo):**
 
-## 🤝 Quer testar com amigos?
+~~~bash
+python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-audit.json
+~~~
 
-O projeto está **privado neste momento**. Pessoas convidadas ao repositório podem ler a documentação e testar em seus **próprios projetos**, com suas próprias permissões GitHub. Dar acesso ao framework **não exige** dar acesso aos outros repositórios do proprietário.
+**CI: cobertura incompleta deve resultar em código 1:**
 
-Comece por [Comece aqui](docs/COMECE_AQUI.md), veja os [prompts prontos](docs/EXEMPLOS_DE_COMANDOS.md) e envie feedback seguindo [Como contribuir](CONTRIBUTING.md). Não compartilhe projetos privados com terceiros sem autorização dos responsáveis.
+~~~bash
+python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-ci.json --strict-coverage
+~~~
 
-## 📚 Documentação
+**Manifesto privado opcional:**
 
-- [Comece aqui — primeiros passos e beta](docs/COMECE_AQUI.md)
-- [Exemplos de comandos para copiar](docs/EXEMPLOS_DE_COMANDOS.md)
-- [Protocolo portátil do agente](AGENTS.md)
-- [HYBRID AUTO — qualquer agente](docs/AGENT_AUTO.md) · [Guia específico para chat](docs/CHATGPT_AUTO.md)
-- [Arquitetura](docs/ARCHITECTURE.md) · [Workflows](docs/WORKFLOWS.md)
-- [Adaptador GitHub](docs/GITHUB_ADAPTER.md) · [Executor universal](docs/UNIVERSAL_EXECUTOR.md)
-- [Auditoria com escopo](docs/SCOPED_AUDIT.md) · [Verificação e evidências](docs/TASK_JOURNAL.md)
-- [Segurança](docs/SECURITY.md) · [Agradecimentos](ACKNOWLEDGEMENTS.md)
-- [English overview](docs/README_EN.md)
+~~~bash
+python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-private.json --include-file-manifest
+~~~
+
+**Comparação com a primeira leitura limitada:**
+
+~~~bash
+python3 -m hybrid_engine project-audit --target /caminho/do/projeto --output /tmp/hybrid-legacy.json --no-auto-scope
+~~~
+
+**Ferramentas adicionais:**
+
+~~~bash
+python3 -m hybrid_engine assess --target /caminho/do/projeto --output /tmp/assessment.json
+python3 -m hybrid_engine advise --report /tmp/assessment.json --output /tmp/advice.json
+python3 -m hybrid_engine db-audit --target /caminho/do/projeto
+python3 -m hybrid_engine gh-audit --repo OWNER/REPOSITORY --ref main
+python3 -m hybrid_engine gh-verify --repo OWNER/REPOSITORY --pr 123
+~~~
+
+`assess` isolado mantém seu limite próprio de 250 arquivos. `gh-audit` é uma análise **remota separada**, não equivale ao `project-audit` com checkout. Para repositórios privados, operações de GitHub podem exigir um `GH_TOKEN` com acesso mínimo. Revisar scripts do alvo antes de optar por executá-los.
+
+[Documentação técnica](docs/ASSESSMENT.md) · [Auditoria multidimensional](docs/PROJECT_AUDIT.md) · [Adaptador GitHub](docs/GITHUB_ADAPTER.md).
+
+## 🧭 Qual fluxo pedir ao agente?
+
+| Pedido | Finalidade | Permissão padrão |
+| --- | --- | --- |
+| `HYBRID AUDIT` | Revisar sistema e propor prioridades | Somente leitura |
+| `HYBRID DEBUG` | Investigar erro específico | Investigar; corrigir após autorização |
+| `HYBRID AUDIT-FIX` | Corrigir achado reproduzível | Branch/PR Draft somente se autorizado |
+| `HYBRID BUILD` | Implementar recurso com critérios de aceite | Mudança revisável autorizada |
+| `HYBRID REVIEW` | Revisar uma PR | Somente leitura |
+| `HYBRID STATUS` | Retomar uma tarefa com evidências | Somente leitura |
+| `HYBRID AUTO` | Escolher o fluxo adequado ao pedido | Não concede permissões automaticamente |
+
+Essas expressões são **convenções portáteis**, não comandos nativos de todas as plataformas.
+
+## 🧪 Validação e evidências
+
+A `main` pública da **v0.11.2** está no commit [`71b83204135fc2adde959149f20de2bcc98f141a`](https://github.com/americashowspy-create/hybrid-engine/commit/71b83204135fc2adde959149f20de2bcc98f141a).
+
+- **287 testes Python aprovados** na PR [#20](https://github.com/americashowspy-create/hybrid-engine/pull/20), com CI e smoke da CLI bem-sucedidos no [GitHub Actions](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44286423222).
+- O **CI da própria `main`** também concluiu com sucesso após o merge, incluindo o smoke da CLI e a auditoria remota do repositório: [execução #44288317307](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44288317307).
+- Na **v0.11.1**, um teste independente com Codex relatou **261/261 arquivos elegíveis em dois lotes**, achado SQL após o 250º arquivo e limite honesto de **4.000/4.001 atribuídos**. Este teste externo não substitui validação específica da experiência de agentes na v0.11.2.
+
+**O que foi validado:** suíte automatizada, comandos de CLI e execução estática por lotes em cenários controlados. **O que não foi certificado:** ausência de vulnerabilidades, segurança de produção, comportamento de todos os agentes ou qualidade de qualquer projeto externo.
+
+[Changelog completo](CHANGELOG.md) · [Como contribuir](CONTRIBUTING.md).
+
+## 🔒 Segurança e responsabilidade
+
+Não envie tokens ou dados privados para prompts públicos. O framework não realiza automaticamente pentest ativo, acesso a banco real, migrações, merge ou deploy. Achados estáticos são **indícios**, e mudanças de alto impacto exigem revisão específica. Nunca reformule pedidos para contornar controles de segurança de uma plataforma.
+
+**Para experimentar:** o repositório Hybrid é **público**; o **seu projeto-alvo** pode ser privado e requer acesso independente. Use repositórios de teste sob sua autorização. Envie problemas reproduzíveis sem segredos seguindo [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-**Projeto independente:** combina, em implementação própria, planejamento, investigação, revisão, controle de mudanças e evidências. Não é fork nem integração oficial de ferramentas externas. Referências e créditos técnicos: [Agradecimentos](ACKNOWLEDGEMENTS.md).
+Documentação: [Comece aqui](docs/COMECE_AQUI.md) · [Prompts](docs/EXEMPLOS_DE_COMANDOS.md) · [Protocolo](AGENTS.md) · [Compatibilidade](docs/AGENT_COMPATIBILITY.md) · [Arquitetura](docs/ARCHITECTURE.md) · [Segurança](docs/SECURITY.md) · [English](docs/README_EN.md).
 
-Licenciado sob [MIT](LICENSE) · **v0.11.1 na main; v0.11.2 em desenvolvimento** · Criado para ajudar agentes e pessoas a desenvolver software com menos improviso e mais evidências.
+**Projeto independente e aberto, sob licença [MIT](LICENSE).** O Hybrid aplica métodos próprios de análise e organização do trabalho; não é integração oficial de fornecedores de IA.

@@ -2,7 +2,7 @@
 
 **From a plain-language request to a reviewable pull request, with explicit risk and verification gates.**
 
-Hybrid Engine is an **agent-, interface-, and provider-neutral workflow (v0.11.1 on main; v0.11.2 release candidate)** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
+Hybrid Engine is an **agent-, interface-, and provider-neutral workflow (v0.11.2 on main, open source under MIT)** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
 
 **[Português](../README.md)** · [Portable agent protocol](../AGENTS.md) · [ChatGPT AUTO guide](CHATGPT_AUTO.md) · [Security](SECURITY.md) · [Contribution guide](../CONTRIBUTING.md)
 
@@ -47,7 +47,7 @@ security tests and application tests are **NOT_VERIFIED**.
 Use `--no-auto-scope` to disable this behavior.
 See [AI agent compatibility and restrictions](AGENT_COMPATIBILITY.md).
 
-## v0.11.2 candidate — coverage and privacy-aware manifests
+## v0.11.2 — coverage and privacy-aware manifests
 
 `project-audit` adds a `coverage_summary` with enumerated, eligible,
 assigned and unassigned file counts. Add `--strict-coverage` in CI to return
@@ -105,6 +105,8 @@ A separate agent/developer must supply and review the change-set JSON. The bundl
 
 ## Security, cost and maturity
 
+**Current v0.11.2 validation:** 287 Python 3.11 tests passed on [PR #20](https://github.com/americashowspy-create/hybrid-engine/pull/20), with successful CI and CLI smoke on the [merged main commit](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44288317307). External Codex validation of the v0.11.1 batch engine reported 261 eligible files handled in two batches; this does not certify all platforms or production security.
+
 **Historical v0.10.0 offline beta validation:** 251/251 Python 3.11 tests passed on the maintainer's Mac. A separate Radar Artístico checkout produced 12 suspected findings and 12 review orders with `BOUNDED_COMPLETE` scoped coverage and no repository changes. The hosted CI is **NOT VERIFIED** because GitHub Actions failed without retrievable logs while its included usage was exhausted. Earlier v0.9: 135 Python tests passed; its previous Radar pilot reported six suspected SQL policy findings.
 
 - No automatic production deployment, merging or secret changes.
@@ -113,7 +115,7 @@ A separate agent/developer must supply and review the change-set JSON. The bundl
 - Test results and CI are separate. Missing/pending checks are **not** passed checks.
 - v0.8's Python suite passed **124 offline tests**, including four end-to-end tests against a **simulated GitHub client**; see [PR #9](https://github.com/americashowspy-create/hybrid-engine/pull/9). Real third-party GitHub projects require separate pilots.
 
-**Private beta:** This repository is currently private; invitations are required to read it. Testers should use their **own** repositories and permissions. Feedback is welcome via [CONTRIBUTING.md](../CONTRIBUTING.md).
+**Public repository:** the Hybrid Engine source is public under the MIT license. The target project may be private and requires separate, authorized access. Feedback is welcome via [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## More documentation
 

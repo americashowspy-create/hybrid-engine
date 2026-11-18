@@ -1,6 +1,6 @@
-# Audit Intelligence, System Design e Evidence Bridge — beta offline v0.10.0
+# Audit Intelligence, System Design e Evidence Bridge — documentação técnica
 
-Integrado à `main` na PR #15; versão beta v0.10.0, com CI hospedado ainda não verificado.
+Os módulos iniciais chegaram à `main` na PR #15 (v0.10.0). A versão pública atual é **v0.11.2**, com 287 testes e CI hospedado aprovado na [PR #20](https://github.com/americashowspy-create/hybrid-engine/pull/20) e na [main](https://github.com/americashowspy-create/hybrid-engine/actions/runs/44288317307). Os registros de CI antigo abaixo são históricos, não o estado atual.
 Implementação experimental, offline e independente de agente/LLM. Não é pentest,
 certificação de segurança ou verificação de comportamento em produção.
 
@@ -221,7 +221,7 @@ Nenhuma dependência, serviço pago, Docker ou modelo é obrigatório.
 
 Consulte [EXECUTION_PLAN.md](EXECUTION_PLAN.md) para testes realmente executados,
 comparações dos pilotos, medições, commits e limitações remanescentes.
-CI hospedado continua CI_NOT_VERIFIED, separado dos testes locais.
+Na v0.10.0, o CI hospedado era CI_NOT_VERIFIED; na v0.11.2, o CI hospedado da PR #20 e da main passou. Nenhum CI comprova por si só segurança de produção.
 
 ## Em desenvolvimento: handoff seguro do Advisor (v0.11)
 

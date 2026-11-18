@@ -1,6 +1,6 @@
-# Comece aqui — Hybrid Engine v0.11.1 (main), v0.11.2 candidata
+# Comece aqui — Hybrid Engine v0.11.2
 
-Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
+Guia para quem quer testar o Hybrid Engine público **sem precisar entender a implementação em Python**.
 
 [Voltar à página principal](../README.md) · [Prompts prontos](EXEMPLOS_DE_COMANDOS.md) · [Protocolo](../AGENTS.md)
 
@@ -11,7 +11,7 @@ Você precisa de:
 - Um agente de IA, interface de chat, IDE ou terminal com acesso autorizado a repositórios; para criar PR, é necessária **permissão real de escrita**, não somente leitura.
 - Acesso ao repositório **Hybrid Engine**. O Hybrid Engine é público, mas o projeto alvo pode exigir permissões separadas; conhecer uma URL não concede acesso a repositórios privados.
 - Acesso ao **seu projeto de teste**, de preferência com baixo risco e sem dependências de produção.
-- Permissão para fazer alterações no repositório alvo. Nunca use um repositório de outra pessoa sem autorização.
+- Autorização para **analisar** o projeto. Para modificar código ou abrir PR, será necessária uma **autorização separada** e permissão efetiva de escrita; nunca use um repositório de terceiros sem autorização.
 
 **Não precisa:** escolher um provedor específico, contratar GitHub Pro, copiar o framework para o projeto alvo ou habilitar GitHub Actions. Autentique-se com segurança no ambiente escolhido; nunca cole tokens em conversas.
 
@@ -72,7 +72,7 @@ Confira se o agente realmente leu o `AGENTS.md` e executou `project-audit`; some
 
 [Guia de compatibilidade e diagnóstico de bloqueios](AGENT_COMPATIBILITY.md).
 
-## 3B. Indicadores de cobertura (v0.11.2 candidata)
+## 3B. Indicadores de cobertura (v0.11.2 publicada)
 
 O `project-audit` informa arquivos enumerados, elegíveis, atribuídos e
 pendentes sem exigir a publicação de nomes de arquivos. Em CI use
