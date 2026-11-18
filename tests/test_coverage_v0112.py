@@ -26,12 +26,12 @@ class ProjectAuditCoverageV0112Tests(unittest.TestCase):
 
     def test_legacy_summary_discloses_enumerated_and_pending_counts(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp) / "source"
             self.make_project(root)
             (root / "zz_test.sql").write_text(
                 "ALTER TABLE accounts DISABLE ROW LEVEL SECURITY;\n")
             code, output = self.cli("project-audit", "--target", str(root),
-                                    "--no-auto-scope", "--output", str(root.parent / "legacy.json"))
+                                    "--no-auto-scope", "--output", str(Path(tmp) / "legacy.json"))
             self.assertEqual(code, 0)
             self.assertEqual(output["enumerated_files"], 261)
             self.assertEqual(output["eligible_files"], 261)
@@ -41,7 +41,7 @@ class ProjectAuditCoverageV0112Tests(unittest.TestCase):
             self.assertEqual(output["effective_coverage"], "INCOMPLETE")
             self.assertFalse(output["manifest_included"])
             self.assertNotIn("workspace_status", output)
-            report = json.loads((root.parent / "legacy.json").read_text())
+            report = json.loads((Path(tmp) / "legacy.json").read_text())
             self.assertEqual(report["coverage_summary"]["scope"], "initial_assessment")
             self.assertNotIn("file_manifest", report)
             self.assertNotIn("workspace", report)
