@@ -1,4 +1,4 @@
-# Comece aqui — Hybrid Engine v0.10.0 (beta offline)
+# Comece aqui — Hybrid Engine v0.11.1 (candidata)
 
 Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar entender a implementação em Python**.
 
@@ -9,7 +9,7 @@ Guia para quem recebeu um convite para testar o Hybrid Engine **sem precisar ent
 Você precisa de:
 
 - Um agente de IA, interface de chat, IDE ou terminal com acesso autorizado a repositórios; para criar PR, é necessária **permissão real de escrita**, não somente leitura.
-- Acesso ao repositório **Hybrid Engine**. Se ele estiver privado, o responsável precisa convidar você; somente conhecer a URL não permite a leitura.
+- Acesso ao repositório **Hybrid Engine**. O Hybrid Engine é público, mas o projeto alvo pode exigir permissões separadas; conhecer uma URL não concede acesso a repositórios privados.
 - Acesso ao **seu projeto de teste**, de preferência com baixo risco e sem dependências de produção.
 - Permissão para fazer alterações no repositório alvo. Nunca use um repositório de outra pessoa sem autorização.
 
@@ -24,7 +24,7 @@ Você precisa de:
 3. Peça explicitamente a leitura de `AGENTS.md` e do protocolo universal; cole o exemplo abaixo, substituindo a URL do projeto alvo.
 
 ```text
-HYBRID AUTO — TESTE REAL v0.10.0
+HYBRID AUTO — TESTE REAL
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -63,6 +63,14 @@ Se faltar acesso, autorização ou ambiente, explique o bloqueio real.
 | Segurança | Confirmação de que não houve merge ou deploy |
 
 Se o agente apenas der um parecer sem acesso de escrita comprovado, considere **auditoria/planejamento**, não execução. Se oferecer um link de PR que não abre no seu GitHub, o teste falhou.
+
+## 3A. Primeiro contato com Codex/Claude/ChatGPT
+
+Para uma avaliação inicial, identifique separadamente **framework** e **projeto alvo**. Comece em leitura estática e com permissões reais. Se um serviço apresentar restrições de segurança (como verificação adicional para atividades avançadas), respeite o bloqueio e solicite os motivos; **não tente contornar controles**. O Hybrid não concede acesso ao repositório, terminal ou ferramentas nem garante compatibilidade universal.
+
+Confira se o agente realmente leu o `AGENTS.md` e executou `project-audit`; somente mencionar a URL não comprova execução. Em projetos grandes, examine `workspace` por lotes e nunca transforme `BOUNDED_COMPLETE` de arquivos em certificação de segurança.
+
+[Guia de compatibilidade e diagnóstico de bloqueios](AGENT_COMPATIBILITY.md).
 
 ## 4. Escolha um modo de teste
 
