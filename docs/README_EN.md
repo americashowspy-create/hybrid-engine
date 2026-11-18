@@ -2,7 +2,7 @@
 
 **From a plain-language request to a reviewable pull request, with explicit risk and verification gates.**
 
-Hybrid Engine is an **v0.10.0 offline beta, agent-, interface-, and provider-neutral workflow** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
+Hybrid Engine is an **agent-, interface-, and provider-neutral workflow (v0.11.0 on main; v0.11.1 release candidate)** that combines its own implementation of planning, systematic debugging, review, safety gates and evidence-based delivery. It helps an authorized coding agent inspect repositories, establish scope, prepare a small patch, report evidence and open a **draft PR** when permitted.
 
 **[Português](../README.md)** · [Portable agent protocol](../AGENTS.md) · [ChatGPT AUTO guide](CHATGPT_AUTO.md) · [Security](SECURITY.md) · [Contribution guide](../CONTRIBUTING.md)
 
@@ -15,7 +15,7 @@ Use a **chat assistant with repository tools**, a **coding agent / IDE** or an o
 Open a fresh session or a repository checkout, explicitly ask the agent to read `AGENTS.md` and the [universal execution protocol](AGENT_AUTO.md), and replace the placeholder URL:
 
 ```text
-HYBRID AUTO v0.10.0
+HYBRID AUTO
 
 Framework:
 https://github.com/americashowspy-create/hybrid-engine
@@ -35,6 +35,17 @@ Report blocked permissions and missing tools explicitly.
 ```
 
 A URL grants neither execution tools nor repository access. Read-only integrations cannot create PRs by themselves. This protocol does **not** mean every agent platform has completed independent integration testing.
+
+## v0.11.1 candidate — large project audits
+
+The `project-audit` command now automatically batches up to 250 eligible
+files per scan (maximum 16 batches) if the initial assessment hits the file
+limit. The JSON adds a separate `workspace` report with a coverage ledger,
+findings and advice per bounded file scope. The **original** `assessment`
+may still be `INCOMPLETE`; cross-batch imports, real database state, dynamic
+security tests and application tests are **NOT_VERIFIED**.
+Use `--no-auto-scope` to disable this behavior.
+See [AI agent compatibility and restrictions](AGENT_COMPATIBILITY.md).
 
 ## Available capabilities
 
@@ -82,7 +93,7 @@ A separate agent/developer must supply and review the change-set JSON. The bundl
 
 ## Security, cost and maturity
 
-**v0.10.0 offline beta validation:** 251/251 Python 3.11 tests passed on the maintainer's Mac. A separate Radar Artístico checkout produced 12 suspected findings and 12 review orders with `BOUNDED_COMPLETE` scoped coverage and no repository changes. The hosted CI is **NOT VERIFIED** because GitHub Actions failed without retrievable logs while its included usage was exhausted. Earlier v0.9: 135 Python tests passed; its previous Radar pilot reported six suspected SQL policy findings.
+**Historical v0.10.0 offline beta validation:** 251/251 Python 3.11 tests passed on the maintainer's Mac. A separate Radar Artístico checkout produced 12 suspected findings and 12 review orders with `BOUNDED_COMPLETE` scoped coverage and no repository changes. The hosted CI is **NOT VERIFIED** because GitHub Actions failed without retrievable logs while its included usage was exhausted. Earlier v0.9: 135 Python tests passed; its previous Radar pilot reported six suspected SQL policy findings.
 
 - No automatic production deployment, merging or secret changes.
 - No claim that static heuristics replace penetration testing or access-control validation.
